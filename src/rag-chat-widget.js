@@ -16,6 +16,8 @@ function initRagChat(config = {}) {
         sendButtonColor: '#635bff',
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
+        chatButtonOpenSymbol: '💬',
+        chatButtonCloseSymbol: '✖',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -23,8 +25,9 @@ function initRagChat(config = {}) {
 
     let chatHistory = [];
     let isWaitingForResponse = false;
+    let isChatOpen = false;
 
-    const chatButton = createElement('button', styles.chatButton, { innerHTML: mergedConfig.buttonCaption });
+    const chatButton = createElement('button', styles.chatButton, { innerHTML: mergedConfig.chatButtonOpenSymbol });
     const chatContainer = createElement('div', styles.chatContainer);
     const chatHeader = createElement('div', styles.chatHeader);
     const clearButton = createElement('button', styles.clearButton, { innerHTML: '🗑️' });
@@ -70,7 +73,9 @@ function initRagChat(config = {}) {
     appendChildren(document.body, [chatButton, chatContainer]);
 
     chatButton.addEventListener('click', () => {
-        chatContainer.style.display = chatContainer.style.display === 'none' ? 'flex' : 'none';
+        isChatOpen = !isChatOpen;
+        chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+        chatButton.innerHTML = isChatOpen ? mergedConfig.chatButtonCloseSymbol : mergedConfig.chatButtonOpenSymbol;
     });
 
     const sendMessage = async () => {
@@ -102,21 +107,55 @@ function initRagChat(config = {}) {
 
     // Добавляем обработку длинных сообщений
     const addMessage = (sender, text) => {
-        const messageElement = createElement('div', {
-            marginBottom: '10px',
-            padding: '10px',
-            borderRadius: '10px',
-            maxWidth: '80%',
-            overflowX: 'auto', // Добавляем горизонтальную прокрутку для длинных сообщений
-            backgroundColor: sender === 'User' ? '#e6e6e6' : '#d1c4e9',
-            alignSelf: sender === 'User' ? 'flex-end' : 'flex-start',
-            wordBreak: 'break-word', // Разрывает длинные слова
-            whiteSpace: 'pre-wrap', // Сохраняет переносы строк и пробелы
-        });
-
-        messageElement.innerHTML = `<strong>${sender}:</strong> ${text}`;
+        const messageElement = createElement('div', sender === 'User' ? styles.messageUser : styles.messageAgent);
+        messageElement.innerHTML = text;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    // Обновляем функцию handleMessage
+    const handleMessage = async (message) => {
+        addMessage('User', message);
+        chatInput.value = '';
+        isWaitingForResponse = true;
+        preloaderContainer.style.display = 'block';
+        try {
+            const response = await fetch(`http://${mergedConfig.host}:${mergedConfig.port}/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${mergedConfig.token}`
+                },
+                body: JSON.stringify({
+                    messages: [...chatHistory, { role: "user", content: message }],
+                    maxSimilarNumber: 20,
+                    stream: false,
+                    lastMessagesContextNumber: 20
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const answer = await response.text();
+            addMessage('Agent', answer);
+
+            chatHistory.push({ role: 'user', content: message });
+            chatHistory.push({ role: 'assistant', content: answer });
+
+            if (chatHistory.length > 40) {
+                chatHistory = chatHistory.slice(-40);
+            }
+
+            localStorage.setItem('ragChatHistory', JSON.stringify(chatHistory));
+        } catch (error) {
+            console.error('Error in handleMessage:', error);
+            addMessage('System', `Error: ${error.message}`);
+        } finally {
+            isWaitingForResponse = false;
+            preloaderContainer.style.display = 'none';
+        }
     };
 }
 
