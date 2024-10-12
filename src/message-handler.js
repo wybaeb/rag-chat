@@ -1,13 +1,7 @@
 import { createElement, formatText } from './utils';
 import marked from 'marked';
 
-export async function handleMessage(message, chatMessages, chatHistory, config, isWaitingForResponse) {
-    if (isWaitingForResponse) {
-        addMessage('System', 'Please wait for the previous response.', chatMessages, config);
-        return;
-    }
-
-    isWaitingForResponse = true;
+export async function handleMessage(message, chatMessages, chatHistory, config) {
     addMessage('User', message, chatMessages, config);
 
     try {
@@ -44,8 +38,6 @@ export async function handleMessage(message, chatMessages, chatHistory, config, 
     } catch (error) {
         console.error('Error in handleMessage:', error);
         addMessage('System', `Error: ${error.message}`, chatMessages, config);
-    } finally {
-        isWaitingForResponse = false;
     }
 }
 
@@ -68,21 +60,29 @@ export function loadChatHistory(chatMessages, chatHistory, config) {
 
 function addMessage(sender, text, chatMessages, config) {
     const defaultConfig = {
-        userBubbleColor: '#e6e6e6',
-        botBubbleColor: '#d1c4e9'
+        userBubbleColor: 'rgba(230, 230, 230, 0.7)', // Сделано более прозрачным
+        botBubbleColor: 'rgba(209, 196, 233, 0.7)' // Сделано более прозрачным
     };
     const mergedConfig = { ...defaultConfig, ...config };
 
     const messageElement = createElement('div', {
-        marginBottom: '10px',
-        padding: '10px',
+        marginBottom: '15px', // Увеличено для лучшего разделения сообщений
+        padding: '15px', // Увеличено для лучшего визуального восприятия
         borderRadius: '20px',
         maxWidth: '80%',
         backgroundColor: sender === 'User' ? mergedConfig.userBubbleColor : mergedConfig.botBubbleColor,
-        alignSelf: sender === 'User' ? 'flex-end' : 'flex-start'
+        alignSelf: sender === 'User' ? 'flex-end' : 'flex-start',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавлена легкая тень для объема
+        fontSize: '16px' // Увеличено для лучшей читаемости
     });
 
     messageElement.innerHTML = `<strong>${sender}:</strong> ${formatText(text)}`;
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+export function clearChatHistory(chatMessages, chatHistory) {
+    chatMessages.innerHTML = '';
+    chatHistory.length = 0;
+    localStorage.removeItem('ragChatHistory');
 }
