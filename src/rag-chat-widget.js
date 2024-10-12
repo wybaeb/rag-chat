@@ -18,6 +18,7 @@ function initRagChat(config = {}) {
         fontSize: '14px',
         chatButtonOpenSymbol: '💬',
         chatButtonCloseSymbol: '✖',
+        chatTitle: 'Panteo.ai',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -30,6 +31,7 @@ function initRagChat(config = {}) {
     const chatButton = createElement('button', styles.chatButton, { innerHTML: mergedConfig.chatButtonOpenSymbol });
     const chatContainer = createElement('div', styles.chatContainer);
     const chatHeader = createElement('div', styles.chatHeader);
+    const chatTitle = createElement('div', styles.chatTitle, { innerHTML: mergedConfig.chatTitle });
     const clearButton = createElement('button', styles.clearButton, { innerHTML: '🗑️' });
     const chatMessages = createElement('div', {
         ...styles.chatMessages,
@@ -67,7 +69,7 @@ function initRagChat(config = {}) {
     preloaderContainer.appendChild(preloader);
 
     appendChildren(preloaderContainer, [preloader]);
-    appendChildren(chatHeader, [clearButton]);
+    appendChildren(chatHeader, [chatTitle, clearButton]);
     appendChildren(inputContainer, [chatInput, sendButton]);
     appendChildren(chatContainer, [chatHeader, chatMessages, preloaderContainer, inputContainer]);
     appendChildren(document.body, [chatButton, chatContainer]);
