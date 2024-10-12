@@ -1,5 +1,5 @@
 import { createStyles } from './styles';
-import { handleMessage, loadChatHistory, clearChatHistory } from './message-handler';
+import { loadChatHistory, clearChatHistory } from './message-handler';
 import { createElement, appendChildren } from './utils';
 
 function initRagChat(config = {}) {
@@ -113,6 +113,7 @@ function initRagChat(config = {}) {
         messageElement.innerHTML = text;
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        return messageElement;
     };
 
     // Обновляем функцию handleMessage
@@ -121,6 +122,9 @@ function initRagChat(config = {}) {
         chatInput.value = '';
         isWaitingForResponse = true;
         preloaderContainer.style.display = 'block';
+
+        const agentMessageElement = addMessage('Agent', '');
+
         try {
             const response = await fetch(`http://${mergedConfig.host}:${mergedConfig.port}/generate`, {
                 method: 'POST',
@@ -131,7 +135,7 @@ function initRagChat(config = {}) {
                 body: JSON.stringify({
                     messages: [...chatHistory, { role: "user", content: message }],
                     maxSimilarNumber: 20,
-                    stream: false,
+                    stream: true,
                     lastMessagesContextNumber: 20
                 })
             });
@@ -140,11 +144,22 @@ function initRagChat(config = {}) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const answer = await response.text();
-            addMessage('Agent', answer);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let agentResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                agentResponse += chunk;
+                agentMessageElement.innerHTML = agentResponse;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
 
             chatHistory.push({ role: 'user', content: message });
-            chatHistory.push({ role: 'assistant', content: answer });
+            chatHistory.push({ role: 'assistant', content: agentResponse });
 
             if (chatHistory.length > 40) {
                 chatHistory = chatHistory.slice(-40);
@@ -153,7 +168,7 @@ function initRagChat(config = {}) {
             localStorage.setItem('ragChatHistory', JSON.stringify(chatHistory));
         } catch (error) {
             console.error('Error in handleMessage:', error);
-            addMessage('System', `Error: ${error.message}`);
+            agentMessageElement.innerHTML = `Error: ${error.message}`;
         } finally {
             isWaitingForResponse = false;
             preloaderContainer.style.display = 'none';
