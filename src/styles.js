@@ -84,6 +84,21 @@ export function createStyles(config) {
             maxWidth: '70%',
             marginBottom: '10px',
             wordBreak: 'break-word',
+            '& p': { margin: '0 0 10px 0' },
+            '& p:last-child': { marginBottom: 0 },
+            '& pre': {
+                backgroundColor: '#e0e0e0',
+                padding: '10px',
+                borderRadius: '5px',
+                overflowX: 'auto',
+            },
+            '& code': {
+                fontFamily: 'monospace',
+                backgroundColor: '#e0e0e0',
+                padding: '2px 4px',
+                borderRadius: '3px',
+            },
+            '& ul, & ol': { paddingLeft: '20px' },
         },
         messageUser: {
             alignSelf: 'flex-end',

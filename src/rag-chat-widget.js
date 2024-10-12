@@ -1,6 +1,7 @@
 import { createStyles } from './styles';
 import { loadChatHistory, clearChatHistory } from './message-handler';
 import { createElement, appendChildren } from './utils';
+import { marked } from 'marked';
 
 function initRagChat(config = {}) {
     const defaultConfig = {
@@ -110,7 +111,7 @@ function initRagChat(config = {}) {
     // Добавляем обработку длинных сообщений
     const addMessage = (sender, text) => {
         const messageElement = createElement('div', sender === 'User' ? styles.messageUser : styles.messageAgent);
-        messageElement.innerHTML = text;
+        messageElement.innerHTML = sender === 'User' ? text : marked(text);
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return messageElement;
@@ -154,7 +155,7 @@ function initRagChat(config = {}) {
                 
                 const chunk = decoder.decode(value, { stream: true });
                 agentResponse += chunk;
-                agentMessageElement.innerHTML = agentResponse;
+                agentMessageElement.innerHTML = marked(agentResponse);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
