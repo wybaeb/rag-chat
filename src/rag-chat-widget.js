@@ -6,8 +6,7 @@ import { marked } from 'marked';
 function initRagChat(config = {}) {
     const defaultConfig = {
         token: '',
-        host: 'localhost',
-        port: 3000,
+        url: 'http://localhost:3000/generate', // Изменим значение по умолчанию
         buttonPosition: 'bottom-right',
         buttonColor: '#635bff',
         buttonCaption: '💬',
@@ -17,12 +16,16 @@ function initRagChat(config = {}) {
         sendButtonColor: '#635bff',
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
-        chatButtonOpenSymbol: '💬',
-        chatButtonCloseSymbol: '✖',
         chatTitle: 'Panteo.ai',
+        clearButtonCaption: '🗑️ Clear History',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
+    
+    // Добавим эти строки после слияния конфигураций
+    mergedConfig.chatButtonOpenSymbol = mergedConfig.buttonCaption;
+    mergedConfig.chatButtonCloseSymbol = mergedConfig.chatButtonCloseSymbol || '✖';
+
     const styles = createStyles(mergedConfig);
 
     let chatHistory = [];
@@ -33,7 +36,7 @@ function initRagChat(config = {}) {
     const chatContainer = createElement('div', styles.chatContainer);
     const chatHeader = createElement('div', styles.chatHeader);
     const chatTitle = createElement('div', styles.chatTitle, { innerHTML: mergedConfig.chatTitle });
-    const clearButton = createElement('button', styles.clearButton, { innerHTML: '🗑️' });
+    const clearButton = createElement('button', styles.clearButton, { innerHTML: mergedConfig.clearButtonCaption });
     const chatMessages = createElement('div', {
         ...styles.chatMessages,
         overflowX: 'auto', // Добавляем горизонтальную прокрутку
@@ -127,7 +130,7 @@ function initRagChat(config = {}) {
         const agentMessageElement = addMessage('Agent', '');
 
         try {
-            const response = await fetch(`http://${mergedConfig.host}:${mergedConfig.port}/generate`, {
+            const response = await fetch(mergedConfig.url, { // Используем URL из конфигурации
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

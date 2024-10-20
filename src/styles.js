@@ -78,37 +78,59 @@ export function createStyles(config) {
         },
         messageAgent: {
             alignSelf: 'flex-start',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: 'rgba(240, 240, 240, 0.9)', // Немного прозрачности
             borderRadius: '15px 15px 15px 0',
-            padding: '10px 15px',
-            maxWidth: '70%',
-            marginBottom: '10px',
+            padding: '12px 15px', // Немного увеличим вертикальный padding
+            maxWidth: '80%', // Увеличим максимальную ширину
+            marginBottom: '12px',
             wordBreak: 'break-word',
+            fontSize: '16px', // Увеличим размер шрифта
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавим легкую тень
             '& p': { margin: '0 0 10px 0' },
             '& p:last-child': { marginBottom: 0 },
             '& pre': {
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'rgba(224, 224, 224, 0.7)',
                 padding: '10px',
                 borderRadius: '5px',
                 overflowX: 'auto',
+                maxWidth: '100%',
             },
             '& code': {
                 fontFamily: 'monospace',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'rgba(224, 224, 224, 0.7)',
                 padding: '2px 4px',
                 borderRadius: '3px',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
             },
             '& ul, & ol': { paddingLeft: '20px' },
+            '& table': {
+                borderCollapse: 'collapse',
+                width: 'auto',
+                maxWidth: '100%',
+                overflowX: 'auto',
+                display: 'block',
+            },
+            '& th, & td': {
+                border: '1px solid #ccc',
+                padding: '8px',
+                textAlign: 'left',
+            },
+            '& th': {
+                backgroundColor: 'rgba(224, 224, 224, 0.7)',
+            },
         },
         messageUser: {
             alignSelf: 'flex-end',
-            backgroundColor: '#635bff',
+            backgroundColor: 'rgba(99, 91, 255, 0.9)', // Немного прозрачности
             color: 'white',
             borderRadius: '15px 15px 0 15px',
-            padding: '10px 15px',
-            maxWidth: '70%',
-            marginBottom: '10px',
+            padding: '12px 15px', // Немного увеличим вертикальный padding
+            maxWidth: '80%', // Увеличим максимальную ширину
+            marginBottom: '12px',
             wordBreak: 'break-word',
+            fontSize: '16px', // Увеличим размер шрифта
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавим легкую тень
         },
         inputContainer: {
             display: 'flex',

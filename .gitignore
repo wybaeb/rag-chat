@@ -1,2 +1,5 @@
-dist/rag-chat-widget.bundle.js
+node_modules/
+dist/
+.env
+
 
