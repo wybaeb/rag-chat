@@ -2,6 +2,7 @@ const path = require('path');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 // Load env variables
 const env = dotenv.config().parsed || {};
@@ -9,7 +10,9 @@ const env = dotenv.config().parsed || {};
 module.exports = {
     entry: './src/rag-chat-widget.js',
     output: {
-        filename: 'rag-chat-widget.bundle.js',
+        filename: process.env.NODE_ENV === 'production' 
+            ? 'rag-chat-widget.min.js' 
+            : 'rag-chat-widget.bundle.js',
         path: path.resolve(__dirname, 'dist'),
         clean: true,
         library: {
@@ -40,6 +43,24 @@ module.exports = {
             }
         ]
     },
+    optimization: {
+        minimize: process.env.NODE_ENV === 'production',
+        minimizer: [
+            new TerserPlugin({
+                terserOptions: {
+                    format: {
+                        comments: false,
+                    },
+                    compress: {
+                        drop_console: true,
+                        drop_debugger: true,
+                        pure_funcs: ['console.log']
+                    }
+                },
+                extractComments: false
+            }),
+        ],
+    },
     plugins: [
         new webpack.DefinePlugin({
             'process.env': JSON.stringify(env)
@@ -66,8 +87,5 @@ module.exports = {
             "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization",
             "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; img-src 'self' data: https:;"
         }
-    },
-    optimization: {
-        minimize: false // For debugging
     }
 };
