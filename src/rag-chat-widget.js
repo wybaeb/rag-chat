@@ -68,11 +68,12 @@ function initRagChat(config = {}) {
     // Get initial dimensions
     const initialDimensions = getSavedDimensions();
 
-    // Create chat container with initial dimensions
+    // Create chat container with initial dimensions and remove default resize
     const chatContainer = createElement('div', {
         ...styles.chatContainer,
         width: `${initialDimensions.width}px`,
         height: `${initialDimensions.height}px`,
+        resize: 'none', // Disable default resize handle
     });
 
     let chatHistory = [];
@@ -298,7 +299,8 @@ function initRagChat(config = {}) {
         }
     };
 
-    const resizeHandle = createElement('div', {
+    // Create resize handles
+    const resizeHandleTopLeft = createElement('div', {
         position: 'absolute',
         top: '0',
         left: '0',
@@ -307,80 +309,28 @@ function initRagChat(config = {}) {
         cursor: 'nw-resize',
         backgroundColor: 'transparent',
         zIndex: '1002',
-        transform: 'translate(-50%, -50%)',
-        touchAction: 'none',
     });
 
-    Object.assign(chatContainer.style, {
-        resize: 'none',
-        position: 'fixed',
-        overflow: 'hidden',
+    const resizeHandleTop = createElement('div', {
+        position: 'absolute',
+        top: '0',
+        left: '20px',
+        right: '0',
+        height: '5px',
+        cursor: 'n-resize',
+        backgroundColor: 'transparent',
+        zIndex: '1002',
     });
 
-    chatContainer.appendChild(resizeHandle);
-
-    let isResizing = false;
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-
-    resizeHandle.addEventListener('mousedown', initResize);
-    resizeHandle.addEventListener('touchstart', initResize);
-
-    function initResize(e) {
-        isResizing = true;
-        startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-        startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
-        startWidth = chatContainer.offsetWidth;
-        startHeight = chatContainer.offsetHeight;
-
-        document.addEventListener('mousemove', resize);
-        document.addEventListener('touchmove', resize);
-        document.addEventListener('mouseup', stopResize);
-        document.addEventListener('touchend', stopResize);
-
-        document.body.style.userSelect = 'none';
-        e.preventDefault();
-    }
-
-    // Update resize function
-    function resize(e) {
-        if (!isResizing) return;
-
-        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
-        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
-        
-        if (isMobileWidth || isMobileHeight) return;
-
-        const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-        const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
-
-        const deltaX = startX - clientX;
-        const deltaY = startY - clientY;
-
-        const newWidth = startWidth + deltaX;
-        const newHeight = startHeight + deltaY;
-
-        // Apply and save dimensions during manual resize
-        applyDimensions(newWidth, newHeight, true);
-    }
-
-    function stopResize() {
-        isResizing = false;
-        document.removeEventListener('mousemove', resize);
-        document.removeEventListener('touchmove', resize);
-        document.removeEventListener('mouseup', stopResize);
-        document.removeEventListener('touchend', stopResize);
-        document.body.style.userSelect = '';
-    }
-
-    resizeHandle.addEventListener('mouseover', () => {
-        chatContainer.style.cursor = 'nw-resize';
-    });
-
-    resizeHandle.addEventListener('mouseout', () => {
-        chatContainer.style.cursor = 'default';
+    const resizeHandleLeft = createElement('div', {
+        position: 'absolute',
+        top: '20px',
+        left: '0',
+        width: '5px',
+        bottom: '0',
+        cursor: 'w-resize',
+        backgroundColor: 'transparent',
+        zIndex: '1002',
     });
 
     // Update window resize handler
@@ -390,7 +340,10 @@ function initRagChat(config = {}) {
         
         if (isMobileWidth || isMobileHeight) {
             // Mobile mode
-            resizeHandle.style.display = 'none';
+            [resizeHandleTopLeft, resizeHandleTop, resizeHandleLeft].forEach(handle => {
+                handle.style.display = 'none';
+            });
+            
             Object.assign(chatContainer.style, {
                 width: '100vw',
                 height: '100vh',
@@ -417,9 +370,11 @@ function initRagChat(config = {}) {
             }
         } else {
             // Desktop mode
-            resizeHandle.style.display = 'block';
-            const currentDimensions = getSavedDimensions();
+            [resizeHandleTopLeft, resizeHandleTop, resizeHandleLeft].forEach(handle => {
+                handle.style.display = 'block';
+            });
             
+            const currentDimensions = getSavedDimensions();
             applyDimensions(currentDimensions.width, currentDimensions.height, false);
             
             Object.assign(chatContainer.style, {
@@ -428,6 +383,7 @@ function initRagChat(config = {}) {
                 border: `1px solid ${mergedConfig.chatBorderColor}`,
                 borderRadius: '20px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                resize: 'none'
             });
             
             chatButton.style.display = 'block';
@@ -440,8 +396,103 @@ function initRagChat(config = {}) {
         }
     });
 
-    // Apply initial constraints
-    applyDimensions(initialDimensions.width, initialDimensions.height, false);
+    // Add resize handles to container
+    chatContainer.appendChild(resizeHandleTopLeft);
+    chatContainer.appendChild(resizeHandleTop);
+    chatContainer.appendChild(resizeHandleLeft);
+
+    // Update hover effects
+    [resizeHandleTopLeft, resizeHandleTop, resizeHandleLeft].forEach(handle => {
+        handle.addEventListener('mouseover', () => {
+            handle.style.backgroundColor = 'rgba(99, 91, 255, 0.1)';
+        });
+        handle.addEventListener('mouseout', () => {
+            handle.style.backgroundColor = 'transparent';
+        });
+    });
+
+    // Resize state variables
+    let isResizing = false;
+    let currentHandle = null;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    // Initialize resize function
+    function initResize(e, handle) {
+        isResizing = true;
+        currentHandle = handle;
+        startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+        startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+        startWidth = chatContainer.offsetWidth;
+        startHeight = chatContainer.offsetHeight;
+
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('touchmove', resize);
+        document.addEventListener('mouseup', stopResize);
+        document.addEventListener('touchend', stopResize);
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    }
+
+    // Update resize function
+    function resize(e) {
+        if (!isResizing) return;
+
+        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
+        
+        if (isMobileWidth || isMobileHeight) return;
+
+        const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+
+        const deltaX = startX - clientX;
+        const deltaY = startY - clientY;
+
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+
+        switch(currentHandle) {
+            case 'topLeft':
+                newWidth = startWidth + deltaX;
+                newHeight = startHeight + deltaY;
+                break;
+            case 'top':
+                newHeight = startHeight + deltaY;
+                break;
+            case 'left':
+                newWidth = startWidth + deltaX;
+                break;
+        }
+
+        applyDimensions(newWidth, newHeight, true);
+    }
+
+    function stopResize() {
+        if (!isResizing) return;
+        isResizing = false;
+        currentHandle = null;
+        document.removeEventListener('mousemove', resize);
+        document.removeEventListener('touchmove', resize);
+        document.removeEventListener('mouseup', stopResize);
+        document.removeEventListener('touchend', stopResize);
+        document.body.style.userSelect = '';
+    }
+
+    // Add event listeners for all handles
+    resizeHandleTopLeft.addEventListener('mousedown', (e) => initResize(e, 'topLeft'));
+    resizeHandleTopLeft.addEventListener('touchstart', (e) => initResize(e, 'topLeft'));
+    
+    resizeHandleTop.addEventListener('mousedown', (e) => initResize(e, 'top'));
+    resizeHandleTop.addEventListener('touchstart', (e) => initResize(e, 'top'));
+    
+    resizeHandleLeft.addEventListener('mousedown', (e) => initResize(e, 'left'));
+    resizeHandleLeft.addEventListener('touchstart', (e) => initResize(e, 'left'));
+
+    // Trigger initial resize to set correct state
+    window.dispatchEvent(new Event('resize'));
 }
 
 export default function RagChat(config) {
