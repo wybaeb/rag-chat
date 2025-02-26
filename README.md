@@ -9,6 +9,8 @@ RAG Chat Widget is a customizable chat interface compatible with ChatGPT API, de
 - Easy integration
 - Supports streaming responses
 - Markdown rendering for rich text responses
+- Responsive design with mobile-optimized interface
+- Adaptive layout for different screen sizes
 
 ## Usage as External Script
 
@@ -35,7 +37,11 @@ After building the project, you can use the generated `/dist/rag-chat-widget.bun
                 token: 'your_token_here',
                 url: 'https://your-api-url.com/generate',
                 buttonPosition: 'bottom-right',
-                chatTitle: 'My RAG Chat'
+                chatTitle: 'My RAG Chat',
+                buttonOpenCaption: '💬',
+                buttonCloseCaption: '✕',
+                mobileBreakpointWidth: 768,
+                mobileBreakpointHeight: 600
             });
         });
     </script>
@@ -69,7 +75,9 @@ RagChat({
     url: 'https://api-url.com/generate', // API endpoint URL
     buttonPosition: 'bottom-right', // Position of the chat button ('top-left', 'top-right', 'bottom-left', 'bottom-right')
     buttonColor: '#635bff', // Color of the chat button
-    buttonCaption: '💬', // Caption or emoji for the chat button
+    buttonOpenCaption: '💬', // Caption for chat button in closed state
+    buttonCloseCaption: '✕', // Caption for chat button in open state
+    mobileCloseCaption: '✕', // Caption for mobile close button
     chatBackgroundColor: 'rgba(255, 255, 255, 0.9)', // Background color of the chat window
     chatBorderColor: '#ccc', // Border color of the chat window
     inputBackgroundColor: '#f0f0f0', // Background color of the input field
@@ -77,6 +85,25 @@ RagChat({
     fontFamily: 'Arial, sans-serif', // Font family for the chat
     fontSize: '14px', // Font size for the chat
     chatTitle: 'RAG Chat', // Title of the chat window
-    clearButtonCaption: '🗑️ Clear History' // Caption for the clear history button
+    clearButtonCaption: '🗑️ Clear History', // Caption for the clear history button
+    mobileBreakpointWidth: 768, // Width threshold for mobile layout (in pixels)
+    mobileBreakpointHeight: 600 // Height threshold for mobile layout (in pixels)
 });
 ```
+
+### Responsive Design Features
+
+The widget now includes responsive design features:
+
+- **Desktop Mode:**
+  - Floating chat window with customizable size
+  - Toggle button that switches between open/close captions
+  - Standard clear history button
+
+- **Mobile Mode** (screen width ≤ mobileBreakpointWidth or height ≤ mobileBreakpointHeight):
+  - Full-screen chat interface
+  - Dedicated close button in the header
+  - Optimized layout for mobile devices
+  - Automatic layout switching based on screen size
+
+The widget automatically adapts its layout and behavior based on the device's screen size, providing an optimal user experience across all devices.
