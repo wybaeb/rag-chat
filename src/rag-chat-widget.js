@@ -32,16 +32,47 @@ function initRagChat(config = {}) {
     const mergedConfig = { ...defaultConfig, ...config };
     const styles = createStyles(mergedConfig);
 
-    // Load saved dimensions before creating elements
-    const savedDimensions = JSON.parse(localStorage.getItem('ragChatDimensions') || '{}');
-    const initialWidth = savedDimensions.width || mergedConfig.defaultChatWidth;
-    const initialHeight = savedDimensions.height || mergedConfig.defaultChatHeight;
+    // Helper functions
+    function saveDimensions(width, height) {
+        localStorage.setItem('ragChatDimensions', JSON.stringify({
+            width: Math.round(width),
+            height: Math.round(height),
+            timestamp: Date.now()
+        }));
+    }
+
+    function getSavedDimensions() {
+        const saved = JSON.parse(localStorage.getItem('ragChatDimensions') || '{}');
+        return {
+            width: saved.width || mergedConfig.defaultChatWidth,
+            height: saved.height || mergedConfig.defaultChatHeight,
+            timestamp: saved.timestamp || 0
+        };
+    }
+
+    function applyDimensions(width, height, shouldSave = false) {
+        const maxWidth = window.innerWidth - mergedConfig.chatMargin * 2;
+        const maxHeight = window.innerHeight - 95 - mergedConfig.chatMargin;
+        
+        const constrainedWidth = Math.min(Math.max(width, mergedConfig.minChatWidth), maxWidth);
+        const constrainedHeight = Math.min(Math.max(height, mergedConfig.minChatHeight), maxHeight);
+        
+        chatContainer.style.width = `${constrainedWidth}px`;
+        chatContainer.style.height = `${constrainedHeight}px`;
+
+        if (shouldSave) {
+            saveDimensions(constrainedWidth, constrainedHeight);
+        }
+    }
+
+    // Get initial dimensions
+    const initialDimensions = getSavedDimensions();
 
     // Create chat container with initial dimensions
     const chatContainer = createElement('div', {
         ...styles.chatContainer,
-        width: `${initialWidth}px`,
-        height: `${initialHeight}px`,
+        width: `${initialDimensions.width}px`,
+        height: `${initialDimensions.height}px`,
     });
 
     let chatHistory = [];
@@ -301,15 +332,14 @@ function initRagChat(config = {}) {
         e.preventDefault();
     }
 
+    // Update resize function
     function resize(e) {
         if (!isResizing) return;
 
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
         
-        if (isMobileWidth || isMobileHeight) {
-            return;
-        }
+        if (isMobileWidth || isMobileHeight) return;
 
         const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
         const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
@@ -317,19 +347,11 @@ function initRagChat(config = {}) {
         const deltaX = startX - clientX;
         const deltaY = startY - clientY;
 
-        const newWidth = Math.max(mergedConfig.minChatWidth, startWidth + deltaX);
-        const newHeight = Math.max(mergedConfig.minChatHeight, startHeight + deltaY);
+        const newWidth = startWidth + deltaX;
+        const newHeight = startHeight + deltaY;
 
-        const maxWidth = window.innerWidth - parseInt(chatContainer.style.right) - mergedConfig.chatMargin;
-        const maxHeight = window.innerHeight - parseInt(chatContainer.style.bottom) - mergedConfig.chatMargin;
-
-        chatContainer.style.width = Math.min(newWidth, maxWidth) + 'px';
-        chatContainer.style.height = Math.min(newHeight, maxHeight) + 'px';
-
-        localStorage.setItem('ragChatDimensions', JSON.stringify({
-            width: chatContainer.offsetWidth,
-            height: chatContainer.offsetHeight
-        }));
+        // Apply and save dimensions during manual resize
+        applyDimensions(newWidth, newHeight, true);
     }
 
     function stopResize() {
@@ -349,27 +371,13 @@ function initRagChat(config = {}) {
         chatContainer.style.cursor = 'default';
     });
 
-    // Ensure dimensions don't exceed window bounds on initial load
-    function applyConstrainedDimensions() {
-        const maxWidth = window.innerWidth - mergedConfig.chatMargin * 2;
-        const maxHeight = window.innerHeight - 95 - mergedConfig.chatMargin;
-        
-        const constrainedWidth = Math.min(initialWidth, maxWidth);
-        const constrainedHeight = Math.min(initialHeight, maxHeight);
-        
-        chatContainer.style.width = `${constrainedWidth}px`;
-        chatContainer.style.height = `${constrainedHeight}px`;
-    }
-
-    // Apply constraints immediately
-    applyConstrainedDimensions();
-
     // Update window resize handler
     window.addEventListener('resize', () => {
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
         
         if (isMobileWidth || isMobileHeight) {
+            // Mobile mode code...
             resizeHandle.style.display = 'none';
             Object.assign(chatContainer.style, {
                 width: '100vw',
@@ -380,17 +388,13 @@ function initRagChat(config = {}) {
                 borderRadius: '0',
                 boxShadow: 'none',
             });
-            
-            if (isChatOpen) {
-                chatButton.style.display = 'none';
-                clearButton.style.marginRight = '40px';
-                mobileCloseButton.style.visibility = 'visible';
-                mobileCloseButton.style.opacity = '1';
-                mobileCloseButton.style.display = 'flex';
-            }
         } else {
+            // Desktop mode
             resizeHandle.style.display = 'block';
-            applyConstrainedDimensions();
+            const currentDimensions = getSavedDimensions();
+            
+            // Apply saved dimensions without saving (just constrain if needed)
+            applyDimensions(currentDimensions.width, currentDimensions.height, false);
             
             Object.assign(chatContainer.style, {
                 bottom: '95px',
@@ -399,14 +403,11 @@ function initRagChat(config = {}) {
                 borderRadius: '20px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             });
-            
-            chatButton.style.display = 'block';
-            clearButton.style.marginRight = '0';
-            mobileCloseButton.style.visibility = 'hidden';
-            mobileCloseButton.style.opacity = '0';
-            mobileCloseButton.style.display = 'none';
         }
     });
+
+    // Apply initial constraints
+    applyDimensions(initialDimensions.width, initialDimensions.height, false);
 }
 
 export default function RagChat(config) {
