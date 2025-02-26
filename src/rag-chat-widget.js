@@ -22,7 +22,7 @@ function initRagChat(config = {}) {
         mobileBreakpointHeight: 600, // height in px when chat switches to mobile mode
         buttonCloseCaption: '✕',
         buttonOpenCaption: '💬',
-        buttonCloseSymbol: '✕',
+        mobileCloseCaption: '✕',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -114,7 +114,7 @@ function initRagChat(config = {}) {
             backgroundColor: 'rgba(0, 0, 0, 0.1)',
         }
     }, {
-        innerHTML: mergedConfig.buttonCloseCaption
+        innerHTML: mergedConfig.mobileCloseCaption
     });
 
     appendChildren(chatHeader, [chatTitle, clearButton, mobileCloseButton]);
@@ -133,7 +133,7 @@ function initRagChat(config = {}) {
             mobileCloseButton.style.opacity = '1';
             mobileCloseButton.style.display = 'flex';
         } else {
-            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
+            chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
         }
     };
 
@@ -279,6 +279,7 @@ function initRagChat(config = {}) {
             mobileCloseButton.style.visibility = 'hidden';
             mobileCloseButton.style.opacity = '0';
             mobileCloseButton.style.display = 'none';
+            chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
         }
     });
 }
