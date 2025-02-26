@@ -4,20 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAG Agent Debug Chat</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *">
 </head>
 <body>
     <h1>Welcome to RAG Agent Debug Chat</h1>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            RagChat({
-                token: '<%= RAG_CHAT_TOKEN %>',
-                url: '<%= RAG_CHAT_URL %>',
-                buttonPosition: 'bottom-right',
-                buttonColor: 'radial-gradient(462.56% 102.45% at 109.47% 102.45%,#a75bff 0,#635bff 57%,#635bff 100%)',
-                buttonCaption: '\u{1F4AC}',
-                clearButtonCaption: '\u{1F5D1} Clear Chat'
-            });
+        window.addEventListener('load', function() {
+            if (typeof RagChat === 'function') {
+                RagChat({
+                    token: '<%= RAG_CHAT_TOKEN %>',
+                    url: '<%= RAG_CHAT_URL %>',
+                    buttonPosition: 'bottom-right',
+                    buttonColor: 'radial-gradient(462.56% 102.45% at 109.47% 102.45%,#a75bff 0,#635bff 57%,#635bff 100%)',
+                    buttonCaption: '\u{1F4AC}',
+                    clearButtonCaption: '\u{1F5D1} Clear Chat'
+                });
+            } else {
+                console.error('RagChat is not loaded properly');
+            }
         });
     </script>
 </body>

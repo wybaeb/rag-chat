@@ -3,14 +3,8 @@ const webpack = require('webpack');
 const dotenv = require('dotenv');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-// Загрузка переменных окружения
-const env = dotenv.config().parsed;
-
-// Создание объекта с переменными окружения для использования в коде
-const envKeys = Object.keys(env).reduce((prev, next) => {
-  prev[`process.env.${next}`] = JSON.stringify(env[next]);
-  return prev;
-}, {});
+// Load env variables
+const env = dotenv.config().parsed || {};
 
 module.exports = {
     entry: './src/rag-chat-widget.js',
@@ -18,12 +12,14 @@ module.exports = {
         filename: 'rag-chat-widget.bundle.js',
         path: path.resolve(__dirname, 'dist'),
         clean: true,
-        library: 'RagChat',
-        libraryTarget: 'umd',
-        libraryExport: 'default',
-        umdNamedDefine: true
+        library: {
+            name: 'RagChat',
+            type: 'umd',
+            export: 'default',
+        },
+        globalObject: 'this'
     },
-    mode: 'production',
+    mode: process.env.NODE_ENV || 'development',
     module: {
         rules: [
             {
@@ -32,27 +28,29 @@ module.exports = {
                 use: {
                     loader: 'babel-loader',
                     options: {
-                        presets: ['@babel/preset-env']
+                        presets: [
+                            ['@babel/preset-env', {
+                                targets: '> 0.25%, not dead',
+                                useBuiltIns: 'usage',
+                                corejs: 3
+                            }]
+                        ]
                     }
                 }
             }
         ]
     },
-    resolve: {
-        fallback: {
-            "fs": false,
-            "path": false,
-            "os": false
-        }
-    },
     plugins: [
-        new webpack.DefinePlugin(envKeys),
+        new webpack.DefinePlugin({
+            'process.env': JSON.stringify(env)
+        }),
         new HtmlWebpackPlugin({
             template: 'index.template.html',
             templateParameters: {
-                RAG_CHAT_TOKEN: env.RAG_CHAT_TOKEN,
-                RAG_CHAT_URL: env.RAG_CHAT_URL
-            }
+                RAG_CHAT_TOKEN: env.RAG_CHAT_TOKEN || '',
+                RAG_CHAT_URL: env.RAG_CHAT_URL || ''
+            },
+            inject: 'body'
         })
     ],
     devServer: {
@@ -61,5 +59,15 @@ module.exports = {
         },
         compress: true,
         port: 9000,
+        hot: true,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+            "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src *; img-src 'self' data: https:;"
+        }
     },
+    optimization: {
+        minimize: false // For debugging
+    }
 };

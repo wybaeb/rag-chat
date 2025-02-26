@@ -18,6 +18,8 @@ function initRagChat(config = {}) {
         fontSize: '14px',
         chatTitle: 'Panteo.ai',
         clearButtonCaption: '🗑️ Clear History',
+        mobileBreakpointWidth: 768, // width in px when chat switches to mobile mode
+        mobileBreakpointHeight: 600, // height in px when chat switches to mobile mode
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -32,7 +34,9 @@ function initRagChat(config = {}) {
     let isWaitingForResponse = false;
     let isChatOpen = false;
 
-    const chatButton = createElement('button', styles.chatButton, { innerHTML: mergedConfig.chatButtonOpenSymbol });
+    const chatButton = createElement('button', styles.chatButton, {
+        innerHTML: mergedConfig.buttonCaption
+    });
     const chatContainer = createElement('div', styles.chatContainer);
     const chatHeader = createElement('div', styles.chatHeader);
     const chatTitle = createElement('div', styles.chatTitle, { innerHTML: mergedConfig.chatTitle });
@@ -78,11 +82,17 @@ function initRagChat(config = {}) {
     appendChildren(chatContainer, [chatHeader, chatMessages, preloaderContainer, inputContainer]);
     appendChildren(document.body, [chatButton, chatContainer]);
 
-    chatButton.addEventListener('click', () => {
+    // Add click handler explicitly
+    chatButton.onclick = function() {
+        console.log('Chat button clicked'); // Debug log
         isChatOpen = !isChatOpen;
         chatContainer.style.display = isChatOpen ? 'flex' : 'none';
-        chatButton.innerHTML = isChatOpen ? mergedConfig.chatButtonCloseSymbol : mergedConfig.chatButtonOpenSymbol;
-    });
+        
+        // Hide button in mobile mode when chat is open
+        if (window.innerWidth <= mergedConfig.mobileBreakpointWidth && isChatOpen) {
+            chatButton.style.display = 'none';
+        }
+    };
 
     const sendMessage = async () => {
         const message = chatInput.value.trim();
@@ -178,6 +188,48 @@ function initRagChat(config = {}) {
             preloaderContainer.style.display = 'none';
         }
     };
+
+    // Add resize handler
+    window.addEventListener('resize', () => {
+        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
+        
+        if (isMobileWidth || isMobileHeight) {
+            Object.assign(chatContainer.style, {
+                width: '100vw',
+                height: '100vh',
+                bottom: '0',
+                right: '0',
+                border: 'none',
+                borderRadius: '0',
+                boxShadow: 'none',
+            });
+            
+            // Hide chat button in mobile mode when chat is open
+            if (isChatOpen) {
+                chatButton.style.display = 'none';
+            }
+        } else {
+            Object.assign(chatContainer.style, {
+                width: '40vw',
+                height: '50vh',
+                bottom: '95px',
+                right: '20px',
+                border: `1px solid ${mergedConfig.chatBorderColor}`,
+                borderRadius: '20px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            });
+            
+            // Show chat button in desktop mode
+            chatButton.style.display = 'block';
+        }
+    });
 }
 
-export default initRagChat;
+export default function RagChat(config) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initRagChat(config));
+    } else {
+        initRagChat(config);
+    }
+}
