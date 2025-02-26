@@ -171,12 +171,22 @@ function initRagChat(config = {}) {
         isChatOpen = !isChatOpen;
         chatContainer.style.display = isChatOpen ? 'flex' : 'none';
         
-        if (window.innerWidth <= mergedConfig.mobileBreakpointWidth) {
+        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
+        
+        if (isMobileWidth || isMobileHeight) {
             chatButton.style.display = 'none';
             clearButton.style.marginRight = '40px';
-            mobileCloseButton.style.visibility = 'visible';
-            mobileCloseButton.style.opacity = '1';
-            mobileCloseButton.style.display = 'flex';
+            Object.assign(mobileCloseButton.style, {
+                display: 'flex',
+                visibility: 'visible',
+                opacity: '1',
+                position: 'absolute',
+                right: '15px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: '1002'
+            });
         } else {
             chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
         }
@@ -187,9 +197,11 @@ function initRagChat(config = {}) {
         chatContainer.style.display = 'none';
         chatButton.style.display = 'block';
         clearButton.style.marginRight = '0';
-        mobileCloseButton.style.visibility = 'hidden';
-        mobileCloseButton.style.opacity = '0';
-        mobileCloseButton.style.display = 'none';
+        Object.assign(mobileCloseButton.style, {
+            display: 'none',
+            visibility: 'hidden',
+            opacity: '0'
+        });
         chatButton.innerHTML = mergedConfig.buttonOpenCaption;
     };
 
@@ -377,7 +389,7 @@ function initRagChat(config = {}) {
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
         
         if (isMobileWidth || isMobileHeight) {
-            // Mobile mode code...
+            // Mobile mode
             resizeHandle.style.display = 'none';
             Object.assign(chatContainer.style, {
                 width: '100vw',
@@ -388,12 +400,26 @@ function initRagChat(config = {}) {
                 borderRadius: '0',
                 boxShadow: 'none',
             });
+            
+            if (isChatOpen) {
+                chatButton.style.display = 'none';
+                clearButton.style.marginRight = '40px';
+                Object.assign(mobileCloseButton.style, {
+                    display: 'flex',
+                    visibility: 'visible',
+                    opacity: '1',
+                    position: 'absolute',
+                    right: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: '1002'
+                });
+            }
         } else {
             // Desktop mode
             resizeHandle.style.display = 'block';
             const currentDimensions = getSavedDimensions();
             
-            // Apply saved dimensions without saving (just constrain if needed)
             applyDimensions(currentDimensions.width, currentDimensions.height, false);
             
             Object.assign(chatContainer.style, {
@@ -402,6 +428,14 @@ function initRagChat(config = {}) {
                 border: `1px solid ${mergedConfig.chatBorderColor}`,
                 borderRadius: '20px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            });
+            
+            chatButton.style.display = 'block';
+            clearButton.style.marginRight = '0';
+            Object.assign(mobileCloseButton.style, {
+                display: 'none',
+                visibility: 'hidden',
+                opacity: '0'
             });
         }
     });
