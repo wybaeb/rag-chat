@@ -20,14 +20,13 @@ function initRagChat(config = {}) {
         clearButtonCaption: '🗑️ Clear History',
         mobileBreakpointWidth: 768, // width in px when chat switches to mobile mode
         mobileBreakpointHeight: 600, // height in px when chat switches to mobile mode
+        buttonCloseCaption: '✕',
+        buttonOpenCaption: '💬',
+        buttonCloseSymbol: '✕',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
     
-    // Добавим эти строки после слияния конфигураций
-    mergedConfig.chatButtonOpenSymbol = mergedConfig.buttonCaption;
-    mergedConfig.chatButtonCloseSymbol = mergedConfig.chatButtonCloseSymbol || '✖';
-
     const styles = createStyles(mergedConfig);
 
     let chatHistory = [];
@@ -35,12 +34,28 @@ function initRagChat(config = {}) {
     let isChatOpen = false;
 
     const chatButton = createElement('button', styles.chatButton, {
-        innerHTML: mergedConfig.buttonCaption
+        innerHTML: mergedConfig.buttonOpenCaption
     });
     const chatContainer = createElement('div', styles.chatContainer);
-    const chatHeader = createElement('div', styles.chatHeader);
-    const chatTitle = createElement('div', styles.chatTitle, { innerHTML: mergedConfig.chatTitle });
-    const clearButton = createElement('button', styles.clearButton, { innerHTML: mergedConfig.clearButtonCaption });
+    const chatHeader = createElement('div', {
+        ...styles.chatHeader,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '15px',
+        position: 'relative',
+    });
+    const chatTitle = createElement('div', {
+        flexGrow: 1,
+        padding: '0',
+    }, {
+        innerHTML: mergedConfig.chatTitle
+    });
+    const clearButton = createElement('button', {
+        ...styles.clearButton,
+        marginRight: '40px',
+    }, {
+        innerHTML: mergedConfig.clearButtonCaption
+    });
     const chatMessages = createElement('div', {
         ...styles.chatMessages,
         overflowX: 'auto', // Добавляем горизонтальную прокрутку
@@ -76,22 +91,52 @@ function initRagChat(config = {}) {
     preloaderContainer.style.display = 'none';
     preloaderContainer.appendChild(preloader);
 
-    appendChildren(preloaderContainer, [preloader]);
-    appendChildren(chatHeader, [chatTitle, clearButton]);
+    const mobileCloseButton = createElement('button', {
+        position: 'absolute',
+        right: '15px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        background: 'transparent',
+        border: 'none',
+        color: 'inherit',
+        fontSize: '16px',
+        cursor: 'pointer',
+        padding: '8px 12px',
+        display: 'none',
+        borderRadius: '8px',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background-color 0.3s ease',
+        '&:hover': {
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        }
+    }, {
+        innerHTML: mergedConfig.buttonCloseCaption
+    });
+
+    appendChildren(chatHeader, [chatTitle, clearButton, mobileCloseButton]);
     appendChildren(inputContainer, [chatInput, sendButton]);
     appendChildren(chatContainer, [chatHeader, chatMessages, preloaderContainer, inputContainer]);
     appendChildren(document.body, [chatButton, chatContainer]);
 
-    // Add click handler explicitly
     chatButton.onclick = function() {
-        console.log('Chat button clicked'); // Debug log
         isChatOpen = !isChatOpen;
         chatContainer.style.display = isChatOpen ? 'flex' : 'none';
         
-        // Hide button in mobile mode when chat is open
-        if (window.innerWidth <= mergedConfig.mobileBreakpointWidth && isChatOpen) {
+        if (window.innerWidth <= mergedConfig.mobileBreakpointWidth) {
             chatButton.style.display = 'none';
+            mobileCloseButton.style.display = 'flex';
+        } else {
+            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
         }
+    };
+
+    mobileCloseButton.onclick = function() {
+        isChatOpen = false;
+        chatContainer.style.display = 'none';
+        chatButton.style.display = 'block';
+        mobileCloseButton.style.display = 'none';
+        chatButton.innerHTML = mergedConfig.buttonOpenCaption;
     };
 
     const sendMessage = async () => {
@@ -121,7 +166,6 @@ function initRagChat(config = {}) {
 
     loadChatHistory(chatMessages, chatHistory, mergedConfig);
 
-    // Добавляем обработку длинных сообщений
     const addMessage = (sender, text) => {
         const messageElement = createElement('div', sender === 'User' ? styles.messageUser : styles.messageAgent);
         messageElement.innerHTML = sender === 'User' ? text : marked(text);
@@ -130,7 +174,6 @@ function initRagChat(config = {}) {
         return messageElement;
     };
 
-    // Обновляем функцию handleMessage
     const handleMessage = async (message) => {
         addMessage('User', message);
         chatInput.value = '';
@@ -140,7 +183,7 @@ function initRagChat(config = {}) {
         const agentMessageElement = addMessage('Agent', '');
 
         try {
-            const response = await fetch(mergedConfig.url, { // Используем URL из конфигурации
+            const response = await fetch(mergedConfig.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -189,7 +232,6 @@ function initRagChat(config = {}) {
         }
     };
 
-    // Add resize handler
     window.addEventListener('resize', () => {
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
@@ -205,9 +247,9 @@ function initRagChat(config = {}) {
                 boxShadow: 'none',
             });
             
-            // Hide chat button in mobile mode when chat is open
             if (isChatOpen) {
                 chatButton.style.display = 'none';
+                mobileCloseButton.style.display = 'flex';
             }
         } else {
             Object.assign(chatContainer.style, {
@@ -220,8 +262,9 @@ function initRagChat(config = {}) {
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             });
             
-            // Show chat button in desktop mode
             chatButton.style.display = 'block';
+            mobileCloseButton.style.display = 'none';
+            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
         }
     });
 }
