@@ -89,42 +89,131 @@ RagChat({
 });
 ```
 
+## Environment Setup
+
+1. Create your environment configuration:
+```bash
+cp .env.example .env
+```
+
+2. Configure your `.env` file:
+```ini
+RAG_CHAT_TOKEN=your_token_here
+RAG_CHAT_URL=https://your-api-url.com/generate
+PORT=9000  # Optional, default is 9000
+```
+
+## Development Modes
+
+### 1. Production Mode (Default)
+```bash
+npm start        # Unix/Mac
+# or
+npm run start:win  # Windows
+```
+This will:
+- Generate minified production bundle (rag-chat-widget.min.js)
+- Start development server at http://localhost:9000
+- Open browser automatically
+- Use production optimizations
+- Remove console logs and debugging info
+- Minimize bundle size
+
+### 2. Development Mode
+```bash
+npm run start:dev
+```
+Features:
+- Start development server with hot reload
+- Use unminified code with source maps
+- Enable detailed console logging
+- Better for debugging and development
+- Watch for file changes
+
+### 3. Build Without Server
+```bash
+npm run build:prod        # Production build (Unix/Mac)
+npm run build:prod:win    # Production build (Windows)
+npm run build            # Development build
+```
+
+The builds will be available in `/dist` directory:
+- `rag-chat-widget.min.js` - Production version
+- `rag-chat-widget.bundle.js` - Development version
+
+Note: The production version (min.js) is tracked in git and available directly from the repository for easy integration.
+
+### Port Configuration
+By default, the development server runs on port 9000. You can change this by:
+1. Adding PORT to your .env file:
+```ini
+PORT=8000  # or any other port
+```
+2. Or using the PORT environment variable when running:
+```bash
+PORT=8000 npm start
+```
+
 ## Building from Source
 
 If you need to customize the widget further, you can build it from source:
 
-### 1. Setup
+### Development
+
+### Quick Start
 ```bash
-git clone https://github.com/yourusername/rag-chat-widget.git
-cd rag-chat-widget
+git clone https://github.com/wybaeb/rag-chat.git
+cd rag-chat
 npm install
 ```
 
-### 2. Configuration
-Copy `.env.example` to `.env` and set your values:
-```
-RAG_CHAT_TOKEN=your_actual_token
-RAG_CHAT_URL=https://your-actual-url.com/api/generate
-```
+### Running the Project
 
-### 3. Build Options
-
-#### Development Version
+#### Production Mode (Recommended for Testing)
 ```bash
-npm run build     # Creates dist/rag-chat-widget.bundle.js
+npm start        # Unix/Mac
 # or
-npm run dev      # Starts development server at http://localhost:9000
+npm run start:win  # Windows
 ```
-- Includes source maps
-- Keeps console logs
-- Unminified for debugging
+This will:
+- Generate minified production bundle (rag-chat-widget.min.js)
+- Start development server at http://localhost:9000
+- Open browser automatically
+- Use production optimizations
 
-#### Production Version
+#### Development Mode
+```bash
+npm run start:dev
+```
+This will:
+- Start development server with hot reload
+- Use unminified code with source maps
+- Enable detailed console logging
+- Better for debugging and development
+
+### Building Without Server
+
+#### Production Build
 ```bash
 npm run build:prod        # Unix/Mac
 npm run build:prod:win    # Windows
 ```
-- Creates minified dist/rag-chat-widget.min.js
-- Removes console logs and comments
-- Optimized for production use
+Creates minified `/dist/rag-chat-widget.min.js`
+
+#### Development Build
+```bash
+npm run build
+```
+Creates unminified `/dist/rag-chat-widget.bundle.js`
+
+### Port Configuration
+By default, the development server runs on port 9000. You can change this by:
+1. Adding PORT to your .env file:
+```env
+PORT=8000  # or any other port
+```
+2. Or using the PORT environment variable when running:
+```bash
+PORT=8000 npm start
+```
 

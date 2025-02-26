@@ -3,9 +3,10 @@
     "dotenv": "^16.4.5",
     "marked": "^14.1.2"
   },
-  "name": "rag-chat",
+  "name": "rag-chat-widget",
   "version": "1.0.0",
-  "main": "message-handler.js",
+  "description": "RAG Chat Widget for web applications",
+  "main": "dist/rag-chat-widget.min.js",
   "devDependencies": {
     "@babel/core": "^7.25.8",
     "@babel/preset-env": "^7.25.8",
@@ -18,14 +19,19 @@
     "webpack-dev-server": "^5.1.0"
   },
   "scripts": {
-    "start": "npm run build && node server.js",
-    "dev": "webpack serve --mode development",
+    "start": "NODE_ENV=production webpack serve --mode production",
+    "start:win": "set NODE_ENV=production&& webpack serve --mode production",
+    "start:dev": "webpack serve --mode development",
     "build": "webpack --mode development",
     "build:prod": "NODE_ENV=production webpack --mode production",
     "build:prod:win": "set NODE_ENV=production&& webpack --mode production"
   },
-  "keywords": [],
+  "keywords": [
+    "chat",
+    "widget",
+    "rag",
+    "ai"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": ""
+  "license": "ISC"
 }
