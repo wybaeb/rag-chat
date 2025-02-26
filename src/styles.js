@@ -37,6 +37,9 @@ export function createStyles(config) {
             fontSize: config.fontSize,
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             backdropFilter: 'blur(10px)',
+            resize: 'both',
+            minWidth: '300px',
+            minHeight: '400px',
         },
         chatHeader: {
             display: 'flex',
@@ -166,6 +169,17 @@ export function createStyles(config) {
         preloader: {
             width: '60px',
             height: '60px',
+        },
+        resizeHandle: {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: '20px',
+            height: '20px',
+            cursor: 'nw-resize',
+            backgroundColor: 'rgba(99, 91, 255, 0.1)',
+            borderRadius: '0 0 20px 0',
+            zIndex: 1002,
         },
     };
 }

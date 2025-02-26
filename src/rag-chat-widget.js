@@ -241,11 +241,123 @@ function initRagChat(config = {}) {
         }
     };
 
+    // Create resize handle with proper styles
+    const resizeHandle = createElement('div', {
+        position: 'absolute',
+        top: '0',
+        left: '0',
+        width: '20px',
+        height: '20px',
+        cursor: 'nw-resize',
+        backgroundColor: 'transparent', // Make it invisible but functional
+        zIndex: '1002',
+        transform: 'translate(-50%, -50%)', // Better touch target
+        touchAction: 'none', // Prevent scrolling while resizing
+    });
+
+    // Make chat container ready for resize
+    Object.assign(chatContainer.style, {
+        resize: 'none', // Disable default resize
+        position: 'fixed', // Ensure proper positioning
+        overflow: 'hidden',
+    });
+
+    // Add resize handle to container
+    chatContainer.appendChild(resizeHandle);
+
+    // Load saved dimensions
+    const savedDimensions = JSON.parse(localStorage.getItem('ragChatDimensions') || '{}');
+    if (savedDimensions.width && savedDimensions.height) {
+        chatContainer.style.width = savedDimensions.width + 'px';
+        chatContainer.style.height = savedDimensions.height + 'px';
+    }
+
+    // Resize functionality
+    let isResizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    resizeHandle.addEventListener('mousedown', initResize);
+    resizeHandle.addEventListener('touchstart', initResize);
+
+    function initResize(e) {
+        isResizing = true;
+        startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+        startY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
+        startWidth = chatContainer.offsetWidth;
+        startHeight = chatContainer.offsetHeight;
+
+        // Add temporary event listeners
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('touchmove', resize);
+        document.addEventListener('mouseup', stopResize);
+        document.addEventListener('touchend', stopResize);
+
+        // Prevent text selection while resizing
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    }
+
+    function resize(e) {
+        if (!isResizing) return;
+
+        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
+        
+        if (isMobileWidth || isMobileHeight) {
+            return; // Prevent resizing in mobile mode
+        }
+
+        const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+        const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+
+        const deltaX = startX - clientX;
+        const deltaY = startY - clientY;
+
+        const newWidth = Math.max(300, startWidth + deltaX);
+        const newHeight = Math.max(400, startHeight + deltaY);
+
+        const margin = 20;
+        const maxWidth = window.innerWidth - parseInt(chatContainer.style.right) - margin;
+        const maxHeight = window.innerHeight - parseInt(chatContainer.style.bottom) - margin;
+
+        chatContainer.style.width = Math.min(newWidth, maxWidth) + 'px';
+        chatContainer.style.height = Math.min(newHeight, maxHeight) + 'px';
+
+        localStorage.setItem('ragChatDimensions', JSON.stringify({
+            width: chatContainer.offsetWidth,
+            height: chatContainer.offsetHeight
+        }));
+    }
+
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resize);
+        document.removeEventListener('touchmove', resize);
+        document.removeEventListener('mouseup', stopResize);
+        document.removeEventListener('touchend', stopResize);
+        document.body.style.userSelect = '';
+    }
+
+    // Add visual feedback for resize handle
+    resizeHandle.addEventListener('mouseover', () => {
+        chatContainer.style.cursor = 'nw-resize';
+    });
+
+    resizeHandle.addEventListener('mouseout', () => {
+        chatContainer.style.cursor = 'default';
+    });
+
+    // Update existing window resize handler
     window.addEventListener('resize', () => {
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
         
         if (isMobileWidth || isMobileHeight) {
+            // Mobile mode
+            resizeHandle.style.display = 'none';
             Object.assign(chatContainer.style, {
                 width: '100vw',
                 height: '100vh',
@@ -264,9 +376,20 @@ function initRagChat(config = {}) {
                 mobileCloseButton.style.display = 'flex';
             }
         } else {
+            // Desktop mode
+            resizeHandle.style.display = 'block';
+            const margin = 20;
+            const maxWidth = window.innerWidth - parseInt(chatContainer.style.right) - margin;
+            const maxHeight = window.innerHeight - parseInt(chatContainer.style.bottom) - margin;
+            
+            // Load saved dimensions but constrain them
+            const savedDimensions = JSON.parse(localStorage.getItem('ragChatDimensions') || '{}');
+            const width = Math.min(savedDimensions.width || 400, maxWidth);
+            const height = Math.min(savedDimensions.height || 500, maxHeight);
+            
             Object.assign(chatContainer.style, {
-                width: '40vw',
-                height: '50vh',
+                width: `${width}px`,
+                height: `${height}px`,
                 bottom: '95px',
                 right: '20px',
                 border: `1px solid ${mergedConfig.chatBorderColor}`,
@@ -279,7 +402,6 @@ function initRagChat(config = {}) {
             mobileCloseButton.style.visibility = 'hidden';
             mobileCloseButton.style.opacity = '0';
             mobileCloseButton.style.display = 'none';
-            chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
         }
     });
 }
