@@ -2,19 +2,26 @@
 
 RAG Chat Widget is a customizable chat interface compatible with ChatGPT API, designed for easy integration into web applications. It's part of the [Panteo.ai](https://panteo.ai) project, which focuses on advanced AI-powered solutions.
 
-## Main Features
+## Features
 
-- Compatible with ChatGPT API
-- Customizable UI
-- Easy integration
-- Supports streaming responses
-- Markdown rendering for rich text responses
-- Responsive design with mobile-optimized interface
-- Adaptive layout for different screen sizes
+- **Desktop Mode:**
+  - Floating chat window with customizable size
+  - Resizable from multiple points:
+    - Top-left corner (diagonal resize)
+    - Top edge (vertical resize)
+    - Left edge (horizontal resize)
+  - Persistent window dimensions between sessions
+  - Smart size constraints to prevent overflow
 
-## Usage as External Script
+- **Mobile Mode:**
+  - Full-screen chat interface
+  - Dedicated close button
+  - Optimized mobile layout
+  - Automatic mode switching based on screen size
 
-After building the project, you can use the generated `/dist/rag-chat-widget.bundle.js` file as an external static script in any HTML file. Here's a minimal example of how to include and initialize the RAG Chat Widget:
+## Quick Start
+
+The fastest way to integrate RAG Chat Widget is to use the pre-built minified version directly from our repository:
 
 ```html
 <!DOCTYPE html>
@@ -25,23 +32,16 @@ After building the project, you can use the generated `/dist/rag-chat-widget.bun
     <title>RAG Chat Example</title>
 </head>
 <body>
-    <h1>Welcome to RAG Chat Example</h1>
-
     <!-- Include the RAG Chat Widget script -->
-    <script src="path/to/rag-chat-widget.bundle.js"></script>
+    <script src="https://raw.githubusercontent.com/wybaeb/rag-chat/master/dist/rag-chat-widget.min.js"></script>
     
-    <!-- Initialize the RAG Chat Widget -->
+    <!-- Initialize the widget -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             RagChat({
                 token: 'your_token_here',
                 url: 'https://your-api-url.com/generate',
-                buttonPosition: 'bottom-right',
-                chatTitle: 'My RAG Chat',
-                buttonOpenCaption: '💬',
-                buttonCloseCaption: '✕',
-                mobileBreakpointWidth: 768,
-                mobileBreakpointHeight: 600
+                chatTitle: 'My Chat Assistant'
             });
         });
     </script>
@@ -49,61 +49,82 @@ After building the project, you can use the generated `/dist/rag-chat-widget.bun
 </html>
 ```
 
-Make sure to replace `'path/to/rag-chat-widget.bundle.js'` with the actual path to your bundle file, and provide your actual token and API URL.
-
-## Setup and Usage
-
-1. Copy the `.env.example` file and rename it to `.env`.
-2. Fill the `.env` file with your actual data:
-   ```
-   RAG_CHAT_TOKEN=your_actual_token
-   RAG_CHAT_URL=https://your-actual-url.com/api/generate
-   ```
-3. Install dependencies: `npm install`
-4. To run the server with a production build: `npm start`
-   This will build the project and start the server at http://localhost:3000
-5. For development with hot reloading: `npm run dev`
-   This will start the development server at http://localhost:9000
+You can also download the minified file directly from our [repository](https://github.com/wybaeb/rag-chat/blob/master/dist/rag-chat-widget.min.js) and host it on your own server.
 
 ## Configuration
 
-The RagChat widget can be customized using the following configuration options:
+The RagChat widget can be customized using these configuration options:
 
 ```javascript
 RagChat({
+    // Required settings
     token: 'your_token_here', // API authentication token
     url: 'https://api-url.com/generate', // API endpoint URL
-    buttonPosition: 'bottom-right', // Position of the chat button ('top-left', 'top-right', 'bottom-left', 'bottom-right')
-    buttonColor: '#635bff', // Color of the chat button
+
+    // Appearance
+    buttonPosition: 'bottom-right', // Position of chat button ('top-left', 'top-right', 'bottom-left', 'bottom-right')
+    buttonColor: '#635bff', // Color of chat button
     buttonOpenCaption: '💬', // Caption for chat button in closed state
     buttonCloseCaption: '✕', // Caption for chat button in open state
     mobileCloseCaption: '✕', // Caption for mobile close button
-    chatBackgroundColor: 'rgba(255, 255, 255, 0.9)', // Background color of the chat window
-    chatBorderColor: '#ccc', // Border color of the chat window
-    inputBackgroundColor: '#f0f0f0', // Background color of the input field
-    sendButtonColor: '#635bff', // Color of the send button
-    fontFamily: 'Arial, sans-serif', // Font family for the chat
-    fontSize: '14px', // Font size for the chat
-    chatTitle: 'RAG Chat', // Title of the chat window
-    clearButtonCaption: '🗑️ Clear History', // Caption for the clear history button
-    mobileBreakpointWidth: 768, // Width threshold for mobile layout (in pixels)
-    mobileBreakpointHeight: 600 // Height threshold for mobile layout (in pixels)
+    chatTitle: 'RAG Chat', // Title of chat window
+    clearButtonCaption: '🗑️ Clear History', // Caption for clear history button
+
+    // Window settings
+    chatBackgroundColor: 'rgba(255, 255, 255, 0.9)', // Background color
+    chatBorderColor: '#ccc', // Border color
+    inputBackgroundColor: '#f0f0f0', // Input field background
+    sendButtonColor: '#635bff', // Send button color
+    fontFamily: 'Arial, sans-serif', // Font family
+    fontSize: '14px', // Font size
+
+    // Size and layout
+    chatMargin: 20, // Margin from window edges (pixels)
+    minChatWidth: 300, // Minimum width (pixels)
+    minChatHeight: 400, // Minimum height (pixels)
+    defaultChatWidth: 400, // Default width (pixels)
+    defaultChatHeight: 500, // Default height (pixels)
+    mobileBreakpointWidth: 768, // Width threshold for mobile layout
+    mobileBreakpointHeight: 600 // Height threshold for mobile layout
 });
 ```
 
-### Responsive Design Features
+## Building from Source
 
-The widget now includes responsive design features:
+If you need to customize the widget further, you can build it from source:
 
-- **Desktop Mode:**
-  - Floating chat window with customizable size
-  - Toggle button that switches between open/close captions
-  - Standard clear history button
+### 1. Setup
+```bash
+git clone https://github.com/yourusername/rag-chat-widget.git
+cd rag-chat-widget
+npm install
+```
 
-- **Mobile Mode** (screen width ≤ mobileBreakpointWidth or height ≤ mobileBreakpointHeight):
-  - Full-screen chat interface
-  - Dedicated close button in the header
-  - Optimized layout for mobile devices
-  - Automatic layout switching based on screen size
+### 2. Configuration
+Copy `.env.example` to `.env` and set your values:
+```
+RAG_CHAT_TOKEN=your_actual_token
+RAG_CHAT_URL=https://your-actual-url.com/api/generate
+```
 
-The widget automatically adapts its layout and behavior based on the device's screen size, providing an optimal user experience across all devices.
+### 3. Build Options
+
+#### Development Version
+```bash
+npm run build     # Creates dist/rag-chat-widget.bundle.js
+# or
+npm run dev      # Starts development server at http://localhost:9000
+```
+- Includes source maps
+- Keeps console logs
+- Unminified for debugging
+
+#### Production Version
+```bash
+npm run build:prod        # Unix/Mac
+npm run build:prod:win    # Windows
+```
+- Creates minified dist/rag-chat-widget.min.js
+- Removes console logs and comments
+- Optimized for production use
+
