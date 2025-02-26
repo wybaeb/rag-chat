@@ -52,7 +52,7 @@ function initRagChat(config = {}) {
     });
     const clearButton = createElement('button', {
         ...styles.clearButton,
-        marginRight: '40px',
+        marginRight: '0',
     }, {
         innerHTML: mergedConfig.clearButtonCaption
     });
@@ -107,6 +107,9 @@ function initRagChat(config = {}) {
         alignItems: 'center',
         justifyContent: 'center',
         transition: 'background-color 0.3s ease',
+        width: '40px',
+        visibility: 'hidden',
+        opacity: 0,
         '&:hover': {
             backgroundColor: 'rgba(0, 0, 0, 0.1)',
         }
@@ -125,6 +128,9 @@ function initRagChat(config = {}) {
         
         if (window.innerWidth <= mergedConfig.mobileBreakpointWidth) {
             chatButton.style.display = 'none';
+            clearButton.style.marginRight = '40px';
+            mobileCloseButton.style.visibility = 'visible';
+            mobileCloseButton.style.opacity = '1';
             mobileCloseButton.style.display = 'flex';
         } else {
             chatButton.innerHTML = mergedConfig.buttonOpenCaption;
@@ -135,6 +141,9 @@ function initRagChat(config = {}) {
         isChatOpen = false;
         chatContainer.style.display = 'none';
         chatButton.style.display = 'block';
+        clearButton.style.marginRight = '0';
+        mobileCloseButton.style.visibility = 'hidden';
+        mobileCloseButton.style.opacity = '0';
         mobileCloseButton.style.display = 'none';
         chatButton.innerHTML = mergedConfig.buttonOpenCaption;
     };
@@ -249,6 +258,9 @@ function initRagChat(config = {}) {
             
             if (isChatOpen) {
                 chatButton.style.display = 'none';
+                clearButton.style.marginRight = '40px';
+                mobileCloseButton.style.visibility = 'visible';
+                mobileCloseButton.style.opacity = '1';
                 mobileCloseButton.style.display = 'flex';
             }
         } else {
@@ -263,8 +275,10 @@ function initRagChat(config = {}) {
             });
             
             chatButton.style.display = 'block';
+            clearButton.style.marginRight = '0';
+            mobileCloseButton.style.visibility = 'hidden';
+            mobileCloseButton.style.opacity = '0';
             mobileCloseButton.style.display = 'none';
-            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
         }
     });
 }
