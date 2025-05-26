@@ -85,9 +85,64 @@ RagChat({
     defaultChatWidth: 400, // Default width (pixels)
     defaultChatHeight: 500, // Default height (pixels)
     mobileBreakpointWidth: 768, // Width threshold for mobile layout
-    mobileBreakpointHeight: 600 // Height threshold for mobile layout
+    mobileBreakpointHeight: 600, // Height threshold for mobile layout
+
+    // Event handlers
+    onStartResponse: function(e) {
+        // Called when server starts responding to user message
+        console.log('Server starts to respond!', e);
+        // e.timestamp - Date when response started
+        // e.userMessage - User's message that triggered the response
+        // e.response - Fetch response object
+    }
 });
 ```
+
+## Event Handlers
+
+The RAG Chat Widget supports event handlers that allow you to hook into various chat lifecycle events.
+
+### onStartResponse
+
+The `onStartResponse` event handler is triggered when the server starts responding to a user's message. This event fires immediately after the server returns a successful HTTP response but before the streaming content begins.
+
+**Usage:**
+```javascript
+RagChat({
+    token: 'your_token_here',
+    url: 'https://your-api-url.com/generate',
+    onStartResponse: function(eventData) {
+        console.log('Server started responding!', eventData);
+        
+        // Example: Track analytics
+        analytics.track('chat_response_started', {
+            userMessage: eventData.userMessage,
+            timestamp: eventData.timestamp
+        });
+        
+        // Example: Show custom loading indicator
+        showCustomLoader();
+        
+        // Example: Log response time
+        window.responseStartTime = eventData.timestamp;
+    }
+});
+```
+
+**Event Data Object:**
+- `timestamp` (Date): The exact time when the server started responding
+- `userMessage` (string): The user's message that triggered this response
+- `response` (Response): The fetch Response object containing status, headers, etc.
+
+**Use Cases:**
+- Analytics tracking for response times
+- Custom loading indicators
+- Logging user interactions
+- Performance monitoring
+- Custom notifications
+
+**Error Handling:**
+If your event handler throws an error, it will be caught and logged to the console without affecting the chat functionality.
 
 ## Environment Setup
 

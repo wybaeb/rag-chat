@@ -18,7 +18,10 @@
                     buttonPosition: 'bottom-right',
                     buttonColor: 'radial-gradient(462.56% 102.45% at 109.47% 102.45%,#a75bff 0,#635bff 57%,#635bff 100%)',
                     buttonCaption: '\u{1F4AC}',
-                    clearButtonCaption: '\u{1F5D1} Clear Chat'
+                    clearButtonCaption: '\u{1F5D1} Clear Chat',
+                    onStartResponse: function(e) {
+                        console.log('Server starts to respond!', e);
+                    }
                 });
             } else {
                 console.error('RagChat is not loaded properly');

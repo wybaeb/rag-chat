@@ -27,6 +27,7 @@ function initRagChat(config = {}) {
         minChatHeight: 400,
         defaultChatWidth: 400,
         defaultChatHeight: 500,
+        onStartResponse: null,
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -266,6 +267,19 @@ function initRagChat(config = {}) {
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Trigger onStartResponse event when server starts responding
+            if (mergedConfig.onStartResponse && typeof mergedConfig.onStartResponse === 'function') {
+                try {
+                    mergedConfig.onStartResponse({
+                        timestamp: new Date(),
+                        userMessage: message,
+                        response: response
+                    });
+                } catch (error) {
+                    console.error('Error in onStartResponse handler:', error);
+                }
             }
 
             const reader = response.body.getReader();
