@@ -28,21 +28,71 @@ function initRagChat(config = {}) {
         defaultChatWidth: 400,
         defaultChatHeight: 500,
         onStartResponse: null,
+        // New sidebar mode options
+        mode: 'floating', // 'floating' or 'sidebar'
+        sidebarSelector: null, // CSS selector for sidebar container
+        sidebarToggleSelector: null, // CSS selector for toggle button
+        sidebarWidth: '25%', // Width when expanded
+        sidebarCollapsedWidth: '0px', // Width when collapsed
+        sidebarPosition: 'right', // 'left' or 'right'
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
     const styles = createStyles(mergedConfig);
 
+    // Check if we're in sidebar mode
+    const isSidebarMode = mergedConfig.mode === 'sidebar';
+    let sidebarContainer = null;
+    let sidebarToggleButton = null;
+    let isSidebarOpen = false;
+
+    if (isSidebarMode) {
+        // Find or create sidebar container
+        if (mergedConfig.sidebarSelector) {
+            sidebarContainer = document.querySelector(mergedConfig.sidebarSelector);
+        }
+        
+        if (!sidebarContainer) {
+            console.error('Sidebar mode requires a valid sidebarSelector');
+            return;
+        }
+
+        // Find toggle button
+        if (mergedConfig.sidebarToggleSelector) {
+            sidebarToggleButton = document.querySelector(mergedConfig.sidebarToggleSelector);
+        }
+
+        // Set initial sidebar styles
+        Object.assign(sidebarContainer.style, {
+            width: mergedConfig.sidebarCollapsedWidth,
+            transition: 'width 0.3s ease',
+            overflow: 'hidden',
+            position: 'relative',
+            height: '100vh',
+            borderLeft: mergedConfig.sidebarPosition === 'right' ? '1px solid #e0e0e0' : 'none',
+            borderRight: mergedConfig.sidebarPosition === 'left' ? '1px solid #e0e0e0' : 'none',
+        });
+    }
+
     // Helper functions
     function saveDimensions(width, height) {
-        localStorage.setItem('ragChatDimensions', JSON.stringify({
-            width: Math.round(width),
-            height: Math.round(height),
-            timestamp: Date.now()
-        }));
+        if (!isSidebarMode) {
+            localStorage.setItem('ragChatDimensions', JSON.stringify({
+                width: Math.round(width),
+                height: Math.round(height),
+                timestamp: Date.now()
+            }));
+        }
     }
 
     function getSavedDimensions() {
+        if (isSidebarMode) {
+            return {
+                width: '100%',
+                height: '100%',
+                timestamp: Date.now()
+            };
+        }
         const saved = JSON.parse(localStorage.getItem('ragChatDimensions') || '{}');
         return {
             width: saved.width || mergedConfig.defaultChatWidth,
@@ -52,6 +102,12 @@ function initRagChat(config = {}) {
     }
 
     function applyDimensions(width, height, shouldSave = false) {
+        if (isSidebarMode) {
+            chatContainer.style.width = '100%';
+            chatContainer.style.height = '100%';
+            return;
+        }
+
         const maxWidth = window.innerWidth - mergedConfig.chatMargin * 2;
         const maxHeight = window.innerHeight - 95 - mergedConfig.chatMargin;
         
@@ -66,24 +122,90 @@ function initRagChat(config = {}) {
         }
     }
 
+    function toggleSidebar() {
+        if (!isSidebarMode || !sidebarContainer) return;
+
+        isSidebarOpen = !isSidebarOpen;
+        
+        if (isSidebarOpen) {
+            sidebarContainer.style.width = mergedConfig.sidebarWidth;
+            chatContainer.style.display = 'flex';
+            
+            // Apply mobile-like fullscreen styling for sidebar mode
+            Object.assign(chatContainer.style, {
+                width: '100%',
+                height: '100%',
+                position: 'relative',
+                bottom: 'auto',
+                right: 'auto',
+                border: 'none',
+                borderRadius: '0',
+                boxShadow: 'none',
+                backdropFilter: 'none'
+            });
+            
+            // Hide resize handles in sidebar mode
+            if (resizeHandleTopLeft) resizeHandleTopLeft.style.display = 'none';
+            if (resizeHandleTop) resizeHandleTop.style.display = 'none';
+            if (resizeHandleLeft) resizeHandleLeft.style.display = 'none';
+            
+            // Update button styling for sidebar mode
+            if (sidebarToggleButton) {
+                sidebarToggleButton.innerHTML = mergedConfig.buttonCloseCaption;
+                sidebarToggleButton.setAttribute('title', 'Close chat');
+            }
+            
+            // Adjust clear button margin for close button
+            if (clearButton) {
+                clearButton.style.marginRight = '40px';
+            }
+        } else {
+            sidebarContainer.style.width = mergedConfig.sidebarCollapsedWidth;
+            setTimeout(() => {
+                if (!isSidebarOpen) {
+                    chatContainer.style.display = 'none';
+                }
+            }, 300); // Wait for transition to complete
+            
+            if (sidebarToggleButton) {
+                sidebarToggleButton.innerHTML = mergedConfig.buttonOpenCaption;
+                sidebarToggleButton.setAttribute('title', 'Open chat');
+            }
+            
+            // Reset clear button margin
+            if (clearButton) {
+                clearButton.style.marginRight = '0';
+            }
+        }
+    }
+
     // Get initial dimensions
     const initialDimensions = getSavedDimensions();
 
-    // Create chat container with initial dimensions and remove default resize
-    const chatContainer = createElement('div', {
+    // Create chat container with mode-specific styles
+    const chatContainerStyles = isSidebarMode ? {
+        ...styles.sidebarChatContainer,
+        width: '100%',
+        height: '100%',
+        display: 'none', // Initially hidden in sidebar mode
+    } : {
         ...styles.chatContainer,
         width: `${initialDimensions.width}px`,
         height: `${initialDimensions.height}px`,
         resize: 'none', // Disable default resize handle
-    });
+    };
+
+    const chatContainer = createElement('div', chatContainerStyles);
 
     let chatHistory = [];
     let isWaitingForResponse = false;
     let isChatOpen = false;
 
-    const chatButton = createElement('button', styles.chatButton, {
+    // Create chat button (only for floating mode)
+    const chatButton = !isSidebarMode ? createElement('button', styles.chatButton, {
         innerHTML: mergedConfig.buttonOpenCaption
-    });
+    }) : null;
+
     const chatHeader = createElement('div', {
         ...styles.chatHeader,
         display: 'flex',
@@ -99,7 +221,7 @@ function initRagChat(config = {}) {
     });
     const clearButton = createElement('button', {
         ...styles.clearButton,
-        marginRight: '0',
+        marginRight: isSidebarMode ? '40px' : '0',
     }, {
         innerHTML: mergedConfig.clearButtonCaption
     });
@@ -138,7 +260,32 @@ function initRagChat(config = {}) {
     preloaderContainer.style.display = 'none';
     preloaderContainer.appendChild(preloader);
 
-    const mobileCloseButton = createElement('button', {
+    // Close button for sidebar mode
+    const sidebarCloseButton = isSidebarMode ? createElement('button', {
+        position: 'absolute',
+        right: '15px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        background: 'transparent',
+        border: 'none',
+        color: 'inherit',
+        fontSize: '16px',
+        cursor: 'pointer',
+        padding: '8px 12px',
+        borderRadius: '8px',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'background-color 0.3s ease',
+        width: '40px',
+        '&:hover': {
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        }
+    }, {
+        innerHTML: mergedConfig.buttonCloseCaption
+    }) : null;
+
+    // Mobile close button (for floating mode)
+    const mobileCloseButton = !isSidebarMode ? createElement('button', {
         position: 'absolute',
         right: '15px',
         top: '50%',
@@ -162,50 +309,82 @@ function initRagChat(config = {}) {
         }
     }, {
         innerHTML: mergedConfig.mobileCloseCaption
-    });
+    }) : null;
 
-    appendChildren(chatHeader, [chatTitle, clearButton, mobileCloseButton]);
+    // Build header based on mode
+    if (isSidebarMode && sidebarCloseButton) {
+        appendChildren(chatHeader, [chatTitle, clearButton, sidebarCloseButton]);
+    } else if (mobileCloseButton) {
+        appendChildren(chatHeader, [chatTitle, clearButton, mobileCloseButton]);
+    } else {
+        appendChildren(chatHeader, [chatTitle, clearButton]);
+    }
+
     appendChildren(inputContainer, [chatInput, sendButton]);
     appendChildren(chatContainer, [chatHeader, chatMessages, preloaderContainer, inputContainer]);
-    appendChildren(document.body, [chatButton, chatContainer]);
 
-    chatButton.onclick = function() {
-        isChatOpen = !isChatOpen;
-        chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+    // Append to appropriate container
+    if (isSidebarMode && sidebarContainer) {
+        sidebarContainer.appendChild(chatContainer);
         
-        const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
-        const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
-        
-        if (isMobileWidth || isMobileHeight) {
-            chatButton.style.display = 'none';
-            clearButton.style.marginRight = '40px';
-            Object.assign(mobileCloseButton.style, {
-                display: 'flex',
-                visibility: 'visible',
-                opacity: '1',
-                position: 'absolute',
-                right: '15px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                zIndex: '1002'
-            });
-        } else {
-            chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
+        // Set up toggle button functionality
+        if (sidebarToggleButton) {
+            sidebarToggleButton.onclick = toggleSidebar;
+            sidebarToggleButton.innerHTML = mergedConfig.buttonOpenCaption;
+            sidebarToggleButton.setAttribute('title', 'Open chat');
         }
-    };
 
-    mobileCloseButton.onclick = function() {
-        isChatOpen = false;
-        chatContainer.style.display = 'none';
-        chatButton.style.display = 'block';
-        clearButton.style.marginRight = '0';
-        Object.assign(mobileCloseButton.style, {
-            display: 'none',
-            visibility: 'hidden',
-            opacity: '0'
-        });
-        chatButton.innerHTML = mergedConfig.buttonOpenCaption;
-    };
+        // Set up close button functionality
+        if (sidebarCloseButton) {
+            sidebarCloseButton.onclick = toggleSidebar;
+        }
+    } else {
+        appendChildren(document.body, [chatButton, chatContainer]);
+    }
+
+    // Chat button functionality (floating mode only)
+    if (chatButton) {
+        chatButton.onclick = function() {
+            isChatOpen = !isChatOpen;
+            chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+            
+            const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+            const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
+            
+            if (isMobileWidth || isMobileHeight) {
+                chatButton.style.display = 'none';
+                clearButton.style.marginRight = '40px';
+                Object.assign(mobileCloseButton.style, {
+                    display: 'flex',
+                    visibility: 'visible',
+                    opacity: '1',
+                    position: 'absolute',
+                    right: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: '1002'
+                });
+            } else {
+                chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
+            }
+        };
+    }
+
+    // Mobile close button functionality (floating mode only)
+    if (mobileCloseButton) {
+        mobileCloseButton.onclick = function() {
+            isChatOpen = false;
+            chatContainer.style.display = 'none';
+            chatButton.style.display = 'block';
+            clearButton.style.marginRight = '0';
+            Object.assign(mobileCloseButton.style, {
+                display: 'none',
+                visibility: 'hidden',
+                opacity: '0'
+            });
+            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
+        };
+    }
 
     const sendMessage = async () => {
         const message = chatInput.value.trim();
@@ -349,6 +528,9 @@ function initRagChat(config = {}) {
 
     // Update window resize handler
     window.addEventListener('resize', () => {
+        // Skip resize handling for sidebar mode
+        if (isSidebarMode) return;
+        
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
         
@@ -368,7 +550,7 @@ function initRagChat(config = {}) {
                 boxShadow: 'none',
             });
             
-            if (isChatOpen) {
+            if (isChatOpen && chatButton && mobileCloseButton) {
                 chatButton.style.display = 'none';
                 clearButton.style.marginRight = '40px';
                 Object.assign(mobileCloseButton.style, {
@@ -400,30 +582,34 @@ function initRagChat(config = {}) {
                 resize: 'none'
             });
             
-            chatButton.style.display = 'block';
-            clearButton.style.marginRight = '0';
-            Object.assign(mobileCloseButton.style, {
-                display: 'none',
-                visibility: 'hidden',
-                opacity: '0'
-            });
+            if (chatButton && mobileCloseButton) {
+                chatButton.style.display = 'block';
+                clearButton.style.marginRight = '0';
+                Object.assign(mobileCloseButton.style, {
+                    display: 'none',
+                    visibility: 'hidden',
+                    opacity: '0'
+                });
+            }
         }
     });
 
-    // Add resize handles to container
-    chatContainer.appendChild(resizeHandleTopLeft);
-    chatContainer.appendChild(resizeHandleTop);
-    chatContainer.appendChild(resizeHandleLeft);
+    // Add resize handles to container (only for floating mode)
+    if (!isSidebarMode) {
+        chatContainer.appendChild(resizeHandleTopLeft);
+        chatContainer.appendChild(resizeHandleTop);
+        chatContainer.appendChild(resizeHandleLeft);
 
-    // Update hover effects
-    [resizeHandleTopLeft, resizeHandleTop, resizeHandleLeft].forEach(handle => {
-        handle.addEventListener('mouseover', () => {
-            handle.style.backgroundColor = 'rgba(99, 91, 255, 0.1)';
+        // Update hover effects
+        [resizeHandleTopLeft, resizeHandleTop, resizeHandleLeft].forEach(handle => {
+            handle.addEventListener('mouseover', () => {
+                handle.style.backgroundColor = 'rgba(99, 91, 255, 0.1)';
+            });
+            handle.addEventListener('mouseout', () => {
+                handle.style.backgroundColor = 'transparent';
+            });
         });
-        handle.addEventListener('mouseout', () => {
-            handle.style.backgroundColor = 'transparent';
-        });
-    });
+    }
 
     // Resize state variables
     let isResizing = false;
@@ -495,18 +681,22 @@ function initRagChat(config = {}) {
         document.body.style.userSelect = '';
     }
 
-    // Add event listeners for all handles
-    resizeHandleTopLeft.addEventListener('mousedown', (e) => initResize(e, 'topLeft'));
-    resizeHandleTopLeft.addEventListener('touchstart', (e) => initResize(e, 'topLeft'));
-    
-    resizeHandleTop.addEventListener('mousedown', (e) => initResize(e, 'top'));
-    resizeHandleTop.addEventListener('touchstart', (e) => initResize(e, 'top'));
-    
-    resizeHandleLeft.addEventListener('mousedown', (e) => initResize(e, 'left'));
-    resizeHandleLeft.addEventListener('touchstart', (e) => initResize(e, 'left'));
+    // Add event listeners for all handles (only for floating mode)
+    if (!isSidebarMode) {
+        resizeHandleTopLeft.addEventListener('mousedown', (e) => initResize(e, 'topLeft'));
+        resizeHandleTopLeft.addEventListener('touchstart', (e) => initResize(e, 'topLeft'));
+        
+        resizeHandleTop.addEventListener('mousedown', (e) => initResize(e, 'top'));
+        resizeHandleTop.addEventListener('touchstart', (e) => initResize(e, 'top'));
+        
+        resizeHandleLeft.addEventListener('mousedown', (e) => initResize(e, 'left'));
+        resizeHandleLeft.addEventListener('touchstart', (e) => initResize(e, 'left'));
+    }
 
-    // Trigger initial resize to set correct state
-    window.dispatchEvent(new Event('resize'));
+    // Trigger initial resize to set correct state (only for floating mode)
+    if (!isSidebarMode) {
+        window.dispatchEvent(new Event('resize'));
+    }
 }
 
 export default function RagChat(config) {
