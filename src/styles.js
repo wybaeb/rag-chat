@@ -123,7 +123,9 @@ export function createStyles(config) {
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-all',
             },
-            '& ul, & ol': { paddingLeft: '20px' },
+            // '& ul, & ol': { paddingLeft: '20px' },
+            '& ol': { listStyleType: 'decimal' },
+            '& ul': { listStyleType: 'disc' },
             '& table': {
                 borderCollapse: 'collapse',
                 width: 'auto',
