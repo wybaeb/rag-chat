@@ -35,6 +35,22 @@ function initRagChat(config = {}) {
         sidebarWidth: '25%', // Width when expanded
         sidebarCollapsedWidth: '0px', // Width when collapsed
         sidebarPosition: 'right', // 'left' or 'right'
+        // Welcome question and CAPTCHA options
+        welcomeQuestion: null,
+        requireWelcomeAnswer: false,
+        captchaEnabled: false,
+        captchaEndpoint: '/api/captcha/generate',
+        captchaVerifyEndpoint: '/api/captcha/verify',
+        agentId: null,
+        // Localization
+        locale: 'en',
+        captchaTitle: 'Verify you\'re human',
+        captchaPlaceholder: 'Enter the text from the image',
+        captchaVerifyButton: 'Verify',
+        captchaReloadButton: 'Reload',
+        captchaErrorMessage: 'Incorrect CAPTCHA. Please try again.',
+        // Auto-open chat (used when embedded in container)
+        autoOpen: false,
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -198,7 +214,14 @@ function initRagChat(config = {}) {
 
     let chatHistory = [];
     let isWaitingForResponse = false;
-    let isChatOpen = false;
+    let isChatOpen = mergedConfig.autoOpen || false;
+
+    // Welcome question and CAPTCHA state
+    let welcomeAnswered = false;
+    let captchaToken = null;
+    let captchaVerified = false;
+    let isShowingCaptcha = false;
+    let captchaContainer = null;
 
     // Create chat button (only for floating mode)
     const chatButton = !isSidebarMode ? createElement('button', styles.chatButton, {
@@ -347,6 +370,11 @@ function initRagChat(config = {}) {
             isChatOpen = !isChatOpen;
             chatContainer.style.display = isChatOpen ? 'flex' : 'none';
             
+            // Initialize security features when chat opens for the first time
+            if (isChatOpen && !welcomeAnswered && (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled)) {
+                initializeSecurityFeatures();
+            }
+            
             const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
             const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
             
@@ -406,10 +434,6 @@ function initRagChat(config = {}) {
 
     sendButton.addEventListener('click', sendMessage);
 
-    clearButton.addEventListener('click', () => {
-        clearChatHistory(chatMessages, chatHistory);
-    });
-
     loadChatHistory(chatMessages, chatHistory, mergedConfig);
 
     const addMessage = (sender, text) => {
@@ -419,6 +443,296 @@ function initRagChat(config = {}) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return messageElement;
     };
+
+    // CAPTCHA functions
+    const loadCaptcha = async () => {
+        try {
+            if (!mergedConfig.agentId) {
+                console.error('Agent ID required for CAPTCHA');
+                return;
+            }
+
+            const response = await fetch(`${mergedConfig.captchaEndpoint}?agentId=${mergedConfig.agentId}`);
+            const data = await response.json();
+            
+            if (data.token && data.image) {
+                renderCaptchaUI(data.image, data.token);
+            }
+        } catch (error) {
+            console.error('Error loading CAPTCHA:', error);
+        }
+    };
+
+    const verifyCaptcha = async (answer, token) => {
+        try {
+            const response = await fetch(mergedConfig.captchaVerifyEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: token,
+                    answer: answer,
+                    agentId: mergedConfig.agentId
+                })
+            });
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('Error verifying CAPTCHA:', error);
+            return { success: false, error: 'Verification failed' };
+        }
+    };
+
+    const renderCaptchaUI = (imageDataUrl, token) => {
+        if (captchaContainer) {
+            removeCaptchaUI();
+        }
+
+        isShowingCaptcha = true;
+
+        captchaContainer = createElement('div', {
+            padding: '20px',
+            margin: '10px',
+            backgroundColor: '#f9f9f9',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            textAlign: 'center'
+        });
+
+        const title = createElement('div', {
+            marginBottom: '10px',
+            fontWeight: 'bold',
+            fontSize: '14px'
+        }, { textContent: mergedConfig.captchaTitle });
+
+        const captchaImage = createElement('img', {
+            maxWidth: '100%',
+            height: 'auto',
+            marginBottom: '10px',
+            border: '1px solid #ccc',
+            borderRadius: '4px'
+        }, { src: imageDataUrl });
+
+        const inputField = createElement('input', {
+            width: '100%',
+            padding: '8px',
+            marginBottom: '10px',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontSize: '14px',
+            boxSizing: 'border-box'
+        }, { 
+            type: 'text',
+            placeholder: mergedConfig.captchaPlaceholder,
+            id: 'captchaInput'
+        });
+
+        const errorDiv = createElement('div', {
+            color: '#d32f2f',
+            fontSize: '12px',
+            marginBottom: '10px',
+            minHeight: '16px'
+        });
+
+        const buttonContainer = createElement('div', {
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'center'
+        });
+
+        const verifyButton = createElement('button', {
+            padding: '8px 16px',
+            backgroundColor: mergedConfig.sendButtonColor,
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px'
+        }, { textContent: mergedConfig.captchaVerifyButton });
+
+        const reloadButton = createElement('button', {
+            padding: '8px 16px',
+            backgroundColor: '#757575',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px'
+        }, { textContent: mergedConfig.captchaReloadButton });
+
+        let currentToken = token;
+
+        verifyButton.onclick = async () => {
+            const answer = inputField.value.trim();
+            if (!answer) {
+                errorDiv.textContent = mergedConfig.captchaPlaceholder;
+                return;
+            }
+
+            verifyButton.disabled = true;
+            verifyButton.textContent = mergedConfig.locale === 'ru' ? 'Проверка...' : 'Verifying...';
+            errorDiv.textContent = '';
+
+            const result = await verifyCaptcha(answer, currentToken);
+
+            if (result.success) {
+                captchaToken = result.newToken;
+                captchaVerified = true;
+                removeCaptchaUI();
+                checkAndEnableChat();
+                
+                // If user answered welcome question, send it to LLM now
+                if (welcomeAnswered && chatHistory.length > 0) {
+                    const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
+                    // Show that we're processing the welcome answer
+                    isWaitingForResponse = true;
+                    preloaderContainer.style.display = 'block';
+                    chatInput.disabled = true;
+                    
+                    // Send welcome answer to LLM
+                    try {
+                        await sendMessageToLLM(welcomeAnswer);
+                    } catch (error) {
+                        console.error('Error sending welcome answer to LLM:', error);
+                        addMessage('System', mergedConfig.locale === 'ru' 
+                            ? 'Ошибка при отправке сообщения. Попробуйте еще раз.'
+                            : 'Error sending message. Please try again.');
+                    } finally {
+                        isWaitingForResponse = false;
+                        preloaderContainer.style.display = 'none';
+                        chatInput.disabled = false;
+                        chatInput.focus();
+                    }
+                }
+            } else {
+                errorDiv.textContent = result.error || mergedConfig.captchaErrorMessage;
+                inputField.value = '';
+                verifyButton.disabled = false;
+                verifyButton.textContent = mergedConfig.captchaVerifyButton;
+                // Auto-reload CAPTCHA on failure
+                await loadNewCaptcha();
+            }
+        };
+
+        reloadButton.onclick = async () => {
+            await loadNewCaptcha();
+        };
+
+        const loadNewCaptcha = async () => {
+            try {
+                const response = await fetch(`${mergedConfig.captchaEndpoint}?agentId=${mergedConfig.agentId}`);
+                const data = await response.json();
+                
+                if (data.token && data.image) {
+                    captchaImage.src = data.image;
+                    currentToken = data.token;
+                    inputField.value = '';
+                    errorDiv.textContent = '';
+                }
+            } catch (error) {
+                console.error('Error reloading CAPTCHA:', error);
+            }
+        };
+
+        inputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyButton.click();
+            }
+        });
+
+        appendChildren(buttonContainer, [verifyButton, reloadButton]);
+        appendChildren(captchaContainer, [title, captchaImage, inputField, errorDiv, buttonContainer]);
+        chatMessages.appendChild(captchaContainer);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    const removeCaptchaUI = () => {
+        if (captchaContainer && captchaContainer.parentNode) {
+            captchaContainer.parentNode.removeChild(captchaContainer);
+            captchaContainer = null;
+            isShowingCaptcha = false;
+        }
+    };
+
+    const renderWelcomeQuestion = () => {
+        if (!mergedConfig.welcomeQuestion || welcomeAnswered) {
+            return;
+        }
+
+        const welcomeMessage = addMessage('Agent', mergedConfig.welcomeQuestion);
+        // IMPORTANT: Enable input for welcome question - it's a psychological engagement technique
+        // User answers freely, answer is saved locally, no LLM access needed yet
+        chatInput.disabled = false;
+        chatInput.placeholder = mergedConfig.locale === 'ru' ? 'Введите ваш ответ...' : 'Type your answer...';
+        chatInput.focus();
+    };
+
+    const checkAndEnableChat = () => {
+        // Check if all requirements are met
+        const welcomeOk = !mergedConfig.requireWelcomeAnswer || welcomeAnswered;
+        const captchaOk = !mergedConfig.captchaEnabled || captchaVerified;
+
+        if (welcomeOk && captchaOk) {
+            chatInput.disabled = false;
+            chatInput.placeholder = 'Type your message...';
+            chatInput.focus();
+        } else {
+            chatInput.disabled = true;
+            if (!welcomeOk) {
+                chatInput.placeholder = 'Please answer the welcome question first...';
+            } else if (!captchaOk) {
+                chatInput.placeholder = 'Please complete CAPTCHA verification...';
+            }
+        }
+    };
+
+    // Initialize welcome question and CAPTCHA
+    // This must be defined AFTER all the functions it depends on
+    const initializeSecurityFeatures = () => {
+        // Show welcome question if required
+        if (mergedConfig.requireWelcomeAnswer && mergedConfig.welcomeQuestion) {
+            // Welcome question is a psychological engagement technique
+            // User can answer freely, no LLM access yet
+            renderWelcomeQuestion();
+            // Don't call checkAndEnableChat here - input is already enabled by renderWelcomeQuestion
+        } else if (mergedConfig.captchaEnabled) {
+            // Show CAPTCHA directly if no welcome question
+            loadCaptcha();
+            chatInput.disabled = true;
+            chatInput.placeholder = mergedConfig.locale === 'ru' 
+                ? 'Пожалуйста, пройдите проверку CAPTCHA...' 
+                : 'Please complete CAPTCHA verification...';
+        } else {
+            // No security features enabled, enable chat
+            checkAndEnableChat();
+        }
+    };
+
+    // Update clear button handler to reset and re-initialize security features
+    clearButton.addEventListener('click', () => {
+        clearChatHistory(chatMessages, chatHistory);
+        // Reset security state when clearing history
+        welcomeAnswered = false;
+        captchaVerified = false;
+        captchaToken = null;
+        // Re-initialize security features after clearing
+        if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled) {
+            initializeSecurityFeatures();
+        }
+    });
+
+    // Initialize security features on load if needed
+    if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled) {
+        // If no chat history, initialize security features immediately
+        if (chatHistory.length === 0) {
+            // For autoOpen mode (embedded widgets), initialize immediately
+            if (mergedConfig.autoOpen || isSidebarMode) {
+                initializeSecurityFeatures();
+            } else {
+                // For button-triggered mode, will initialize when button is clicked
+            }
+        }
+    }
 
     // Generate or retrieve session ID
     const getSessionId = () => {
@@ -430,24 +744,28 @@ function initRagChat(config = {}) {
         return sessionId;
     };
 
-    const handleMessage = async (message) => {
-        addMessage('User', message);
-        chatInput.value = '';
-        isWaitingForResponse = true;
-        preloaderContainer.style.display = 'block';
-
+    // Send message to LLM - extracted for reusability
+    const sendMessageToLLM = async (message) => {
         const agentMessageElement = addMessage('Agent', '');
 
         try {
             // Get session ID
             const sessionId = getSessionId();
             
+            // Prepare headers
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mergedConfig.token}`
+            };
+            
+            // Add CAPTCHA token if enabled
+            if (mergedConfig.captchaEnabled && captchaToken) {
+                headers['X-Captcha-Token'] = captchaToken;
+            }
+            
             const response = await fetch(mergedConfig.url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${mergedConfig.token}`
-                },
+                headers: headers,
                 body: JSON.stringify({
                     messages: [...chatHistory, { role: "user", content: message }],
                     sessionId: sessionId,  // Add session ID
@@ -458,6 +776,19 @@ function initRagChat(config = {}) {
             });
 
             if (!response.ok) {
+                // Handle CAPTCHA re-verification
+                if (response.status === 403) {
+                    const errorData = await response.json();
+                    if (errorData.error === 'captcha_reverify' || errorData.error === 'captcha_required') {
+                        agentMessageElement.innerHTML = 'Please complete CAPTCHA verification to continue.';
+                        isWaitingForResponse = false;
+                        preloaderContainer.style.display = 'none';
+                        chatInput.disabled = true;
+                        captchaVerified = false;
+                        await loadCaptcha();
+                        return;
+                    }
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -497,8 +828,62 @@ function initRagChat(config = {}) {
 
             localStorage.setItem('ragChatHistory', JSON.stringify(chatHistory));
         } catch (error) {
-            console.error('Error in handleMessage:', error);
+            console.error('Error sending message to LLM:', error);
             agentMessageElement.innerHTML = `Error: ${error.message}`;
+            throw error; // Re-throw to be handled by caller
+        }
+    };
+
+    const handleMessage = async (message) => {
+        // Handle welcome question answer (psychological engagement technique)
+        // Answer is saved locally, no LLM access needed yet
+        if (mergedConfig.requireWelcomeAnswer && !welcomeAnswered) {
+            addMessage('User', message);
+            welcomeAnswered = true;
+            
+            // Save answer locally - will be sent to LLM later when access is unlocked
+            chatHistory.push({ role: 'user', content: message });
+            localStorage.setItem('ragChatHistory', JSON.stringify(chatHistory));
+            
+            // Show CAPTCHA if enabled (next step in engagement flow)
+            if (mergedConfig.captchaEnabled && !captchaVerified) {
+                await loadCaptcha();
+                chatInput.disabled = true;
+                chatInput.placeholder = mergedConfig.locale === 'ru' 
+                    ? 'Пожалуйста, пройдите проверку CAPTCHA...' 
+                    : 'Please complete CAPTCHA verification...';
+                return;
+            }
+            
+            // If no CAPTCHA required, send to LLM immediately
+            if (!mergedConfig.captchaEnabled) {
+                isWaitingForResponse = true;
+                preloaderContainer.style.display = 'block';
+                chatInput.disabled = true;
+                try {
+                    await sendMessageToLLM(message);
+                } catch (error) {
+                    // Error already logged in sendMessageToLLM
+                } finally {
+                    isWaitingForResponse = false;
+                    preloaderContainer.style.display = 'none';
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                }
+            }
+            return;
+        }
+
+        // Regular message handling
+        addMessage('User', message);
+        chatInput.value = '';
+        isWaitingForResponse = true;
+        preloaderContainer.style.display = 'block';
+
+        try {
+            await sendMessageToLLM(message);
+        } catch (error) {
+            // Error already logged and displayed
         } finally {
             isWaitingForResponse = false;
             preloaderContainer.style.display = 'none';
