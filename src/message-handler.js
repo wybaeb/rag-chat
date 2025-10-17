@@ -21,19 +21,23 @@ export async function handleMessage(message, chatMessages, chatHistory, config) 
         // Use config.url if available, fallback to old endpoint
         const url = config.url || `http://${config.host}:${config.port}/generate`;
         
+        const requestBody = {
+            messages: [...chatHistory, { role: "user", content: message }],
+            sessionId: sessionId,  // Add session ID
+            maxSimilarNumber: 20,
+            stream: false,
+            lastMessagesContextNumber: 20
+        };
+        
+        console.log('[WIDGET] Sending request:', { url, sessionId, hasSessionId: !!sessionId });
+        
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.token}`
             },
-            body: JSON.stringify({
-                messages: [...chatHistory, { role: "user", content: message }],
-                sessionId: sessionId,  // Add session ID
-                maxSimilarNumber: 20,
-                stream: false,
-                lastMessagesContextNumber: 20
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {

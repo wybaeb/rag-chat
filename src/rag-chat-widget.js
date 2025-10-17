@@ -420,6 +420,17 @@ function initRagChat(config = {}) {
         return messageElement;
     };
 
+    // Generate or retrieve session ID
+    const getSessionId = () => {
+        let sessionId = localStorage.getItem('ragChatSessionId');
+        if (!sessionId) {
+            sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem('ragChatSessionId', sessionId);
+            console.log('[WIDGET] New session created:', sessionId);
+        }
+        return sessionId;
+    };
+
     const handleMessage = async (message) => {
         addMessage('User', message);
         chatInput.value = '';
@@ -429,18 +440,30 @@ function initRagChat(config = {}) {
         const agentMessageElement = addMessage('Agent', '');
 
         try {
+            // Get session ID
+            const sessionId = getSessionId();
+            
+            const requestBody = {
+                messages: [...chatHistory, { role: "user", content: message }],
+                sessionId: sessionId,  // Add session ID
+                maxSimilarNumber: 20,
+                stream: true,
+                lastMessagesContextNumber: 20
+            };
+            
+            console.log('[WIDGET] Sending request:', { 
+                url: mergedConfig.url, 
+                sessionId, 
+                messageCount: chatHistory.length + 1 
+            });
+            
             const response = await fetch(mergedConfig.url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${mergedConfig.token}`
                 },
-                body: JSON.stringify({
-                    messages: [...chatHistory, { role: "user", content: message }],
-                    maxSimilarNumber: 20,
-                    stream: true,
-                    lastMessagesContextNumber: 20
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
