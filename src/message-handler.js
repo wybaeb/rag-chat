@@ -1,11 +1,27 @@
 import { createElement, formatText } from './utils';
 import marked from 'marked';
 
+// Generate or retrieve session ID
+function getSessionId() {
+    let sessionId = localStorage.getItem('ragChatSessionId');
+    if (!sessionId) {
+        sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('ragChatSessionId', sessionId);
+    }
+    return sessionId;
+}
+
 export async function handleMessage(message, chatMessages, chatHistory, config) {
     addMessage('User', message, chatMessages, config);
 
     try {
-        const response = await fetch(`http://${config.host}:${config.port}/generate`, {
+        // Get session ID
+        const sessionId = getSessionId();
+        
+        // Use config.url if available, fallback to old endpoint
+        const url = config.url || `http://${config.host}:${config.port}/generate`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -13,6 +29,7 @@ export async function handleMessage(message, chatMessages, chatHistory, config) 
             },
             body: JSON.stringify({
                 messages: [...chatHistory, { role: "user", content: message }],
+                sessionId: sessionId,  // Add session ID
                 maxSimilarNumber: 20,
                 stream: false,
                 lastMessagesContextNumber: 20
@@ -85,4 +102,8 @@ export function clearChatHistory(chatMessages, chatHistory) {
     chatMessages.innerHTML = '';
     chatHistory.length = 0;
     localStorage.removeItem('ragChatHistory');
+    // Generate new session ID when clearing history
+    const newSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem('ragChatSessionId', newSessionId);
+    console.log('Chat history cleared, new session:', newSessionId);
 }
