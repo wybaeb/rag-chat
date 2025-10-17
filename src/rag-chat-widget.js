@@ -490,75 +490,158 @@ function initRagChat(config = {}) {
 
         isShowingCaptcha = true;
 
+        // Modern glassmorphism container matching design system
         captchaContainer = createElement('div', {
-            padding: '20px',
-            margin: '10px',
-            backgroundColor: '#f9f9f9',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            textAlign: 'center'
+            padding: '24px',
+            margin: '16px 12px',
+            backgroundColor: 'rgba(255, 255, 255, 0.88)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+            textAlign: 'center',
+            transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)'
         });
 
+        // Title with design system typography
         const title = createElement('div', {
-            marginBottom: '10px',
-            fontWeight: 'bold',
-            fontSize: '14px'
+            marginBottom: '16px',
+            fontWeight: '600',
+            fontSize: '16px',
+            color: 'rgba(0, 0, 0, 0.88)',
+            letterSpacing: '-0.01em'
         }, { textContent: mergedConfig.captchaTitle });
 
+        // Image container for proper sizing
+        const imageContainer = createElement('div', {
+            width: '100%',
+            maxWidth: '300px',
+            margin: '0 auto 16px',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            border: '1px solid rgba(0, 0, 0, 0.12)',
+            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)',
+            backgroundColor: '#fff'
+        });
+
         const captchaImage = createElement('img', {
-            maxWidth: '100%',
+            width: '100%',
             height: 'auto',
-            marginBottom: '10px',
-            border: '1px solid #ccc',
-            borderRadius: '4px'
+            display: 'block'
         }, { src: imageDataUrl });
 
+        imageContainer.appendChild(captchaImage);
+
+        // Input field matching design system
         const inputField = createElement('input', {
             width: '100%',
-            padding: '8px',
-            marginBottom: '10px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            fontSize: '14px',
-            boxSizing: 'border-box'
+            maxWidth: '300px',
+            padding: '12px 16px',
+            marginBottom: '12px',
+            border: '1px solid rgba(0, 0, 0, 0.14)',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)',
+            boxSizing: 'border-box',
+            backgroundColor: '#fff',
+            color: 'rgba(0, 0, 0, 0.88)',
+            transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)',
+            outline: 'none'
         }, { 
             type: 'text',
             placeholder: mergedConfig.captchaPlaceholder,
             id: 'captchaInput'
         });
 
-        const errorDiv = createElement('div', {
-            color: '#d32f2f',
-            fontSize: '12px',
-            marginBottom: '10px',
-            minHeight: '16px'
+        // Focus state for input
+        inputField.addEventListener('focus', () => {
+            inputField.style.borderColor = mergedConfig.sendButtonColor || '#D100FF';
+            inputField.style.boxShadow = `0 0 0 3px ${mergedConfig.sendButtonColor || '#D100FF'}15`;
+        });
+        inputField.addEventListener('blur', () => {
+            inputField.style.borderColor = 'rgba(0, 0, 0, 0.14)';
+            inputField.style.boxShadow = 'none';
         });
 
+        // Error message with design system colors
+        const errorDiv = createElement('div', {
+            color: '#FF3B30',
+            fontSize: '13px',
+            marginBottom: '12px',
+            minHeight: '18px',
+            fontWeight: '500'
+        });
+
+        // Button container with proper spacing
         const buttonContainer = createElement('div', {
             display: 'flex',
-            gap: '8px',
-            justifyContent: 'center'
+            gap: '12px',
+            justifyContent: 'center',
+            maxWidth: '300px',
+            margin: '0 auto'
         });
 
+        // Primary verify button with design system styling
         const verifyButton = createElement('button', {
-            padding: '8px 16px',
-            backgroundColor: mergedConfig.sendButtonColor,
-            color: 'white',
+            flex: '1',
+            padding: '12px 24px',
+            backgroundColor: mergedConfig.sendButtonColor || '#D100FF',
+            color: '#fff',
             border: 'none',
-            borderRadius: '4px',
+            borderRadius: '12px',
             cursor: 'pointer',
-            fontSize: '14px'
+            fontSize: '15px',
+            fontWeight: '600',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)',
+            transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)',
+            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.12)',
+            outline: 'none'
         }, { textContent: mergedConfig.captchaVerifyButton });
 
+        // Hover and active states for verify button
+        verifyButton.addEventListener('mouseenter', () => {
+            if (!verifyButton.disabled) {
+                verifyButton.style.transform = 'translateY(-1px)';
+                verifyButton.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.18)';
+            }
+        });
+        verifyButton.addEventListener('mouseleave', () => {
+            verifyButton.style.transform = 'translateY(0)';
+            verifyButton.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.12)';
+        });
+        verifyButton.addEventListener('mousedown', () => {
+            if (!verifyButton.disabled) {
+                verifyButton.style.transform = 'scale(0.98)';
+            }
+        });
+        verifyButton.addEventListener('mouseup', () => {
+            verifyButton.style.transform = 'translateY(-1px)';
+        });
+
+        // Secondary reload button (ghost style)
         const reloadButton = createElement('button', {
-            padding: '8px 16px',
-            backgroundColor: '#757575',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
+            padding: '12px 20px',
+            backgroundColor: 'transparent',
+            color: 'rgba(0, 0, 0, 0.64)',
+            border: '1px solid rgba(0, 0, 0, 0.14)',
+            borderRadius: '12px',
             cursor: 'pointer',
-            fontSize: '14px'
+            fontSize: '15px',
+            fontWeight: '600',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)',
+            transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)',
+            outline: 'none'
         }, { textContent: mergedConfig.captchaReloadButton });
+
+        // Hover state for reload button
+        reloadButton.addEventListener('mouseenter', () => {
+            reloadButton.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
+            reloadButton.style.borderColor = 'rgba(0, 0, 0, 0.24)';
+        });
+        reloadButton.addEventListener('mouseleave', () => {
+            reloadButton.style.backgroundColor = 'transparent';
+            reloadButton.style.borderColor = 'rgba(0, 0, 0, 0.14)';
+        });
 
         let currentToken = token;
 
@@ -570,6 +653,8 @@ function initRagChat(config = {}) {
             }
 
             verifyButton.disabled = true;
+            verifyButton.style.opacity = '0.6';
+            verifyButton.style.cursor = 'not-allowed';
             verifyButton.textContent = mergedConfig.locale === 'ru' ? 'Проверка...' : 'Verifying...';
             errorDiv.textContent = '';
 
@@ -608,6 +693,8 @@ function initRagChat(config = {}) {
                 errorDiv.textContent = result.error || mergedConfig.captchaErrorMessage;
                 inputField.value = '';
                 verifyButton.disabled = false;
+                verifyButton.style.opacity = '1';
+                verifyButton.style.cursor = 'pointer';
                 verifyButton.textContent = mergedConfig.captchaVerifyButton;
                 // Auto-reload CAPTCHA on failure
                 await loadNewCaptcha();
@@ -641,7 +728,7 @@ function initRagChat(config = {}) {
         });
 
         appendChildren(buttonContainer, [verifyButton, reloadButton]);
-        appendChildren(captchaContainer, [title, captchaImage, inputField, errorDiv, buttonContainer]);
+        appendChildren(captchaContainer, [title, imageContainer, inputField, errorDiv, buttonContainer]);
         chatMessages.appendChild(captchaContainer);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     };
