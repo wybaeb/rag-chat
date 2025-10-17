@@ -1,43 +1,22 @@
 import { createElement, formatText } from './utils';
 import marked from 'marked';
 
-// Generate or retrieve session ID
-function getSessionId() {
-    let sessionId = localStorage.getItem('ragChatSessionId');
-    if (!sessionId) {
-        sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem('ragChatSessionId', sessionId);
-    }
-    return sessionId;
-}
-
 export async function handleMessage(message, chatMessages, chatHistory, config) {
     addMessage('User', message, chatMessages, config);
 
     try {
-        // Get session ID
-        const sessionId = getSessionId();
-        
-        // Use config.url if available, fallback to old endpoint
-        const url = config.url || `http://${config.host}:${config.port}/generate`;
-        
-        const requestBody = {
-            messages: [...chatHistory, { role: "user", content: message }],
-            sessionId: sessionId,  // Add session ID
-            maxSimilarNumber: 20,
-            stream: false,
-            lastMessagesContextNumber: 20
-        };
-        
-        console.log('[WIDGET] Sending request:', { url, sessionId, hasSessionId: !!sessionId });
-        
-        const response = await fetch(url, {
+        const response = await fetch(`http://${config.host}:${config.port}/generate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${config.token}`
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                messages: [...chatHistory, { role: "user", content: message }],
+                maxSimilarNumber: 20,
+                stream: false,
+                lastMessagesContextNumber: 20
+            })
         });
 
         if (!response.ok) {

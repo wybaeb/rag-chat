@@ -52,9 +52,14 @@ module.exports = {
                         comments: false,
                     },
                     compress: {
-                        drop_console: true,
+                        drop_console: false,  // Keep console for debugging
                         drop_debugger: true,
-                        pure_funcs: ['console.log']
+                        // Don't remove sessionId code
+                        pure_funcs: []
+                    },
+                    mangle: {
+                        // Don't mangle sessionId related code
+                        reserved: ['getSessionId', 'sessionId', 'ragChatSessionId']
                     }
                 },
                 extractComments: false
