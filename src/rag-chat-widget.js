@@ -51,6 +51,12 @@ function initRagChat(config = {}) {
         captchaErrorMessage: 'Incorrect CAPTCHA. Please try again.',
         // Auto-open chat (used when embedded in container)
         autoOpen: false,
+        // Agreement consent options
+        agreements: null, // Array of { id, labelHtml, modalUrl, modalTitle }
+        agreementsEndpoint: null,
+        agreementsContinueButton: 'Continue',
+        agreementsAllRequired: 'Please accept all agreements to continue',
+        agreementsModalClose: 'Close',
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -222,6 +228,11 @@ function initRagChat(config = {}) {
     let captchaVerified = false;
     let isShowingCaptcha = false;
     let captchaContainer = null;
+
+    // Agreement consent state
+    let agreementsAccepted = false;
+    let agreementStates = {}; // Map of agreement id -> checked state
+    let agreementsContainer = null;
 
     // Create chat button (only for floating mode)
     const chatButton = !isSidebarMode ? createElement('button', styles.chatButton, {
@@ -664,10 +675,16 @@ function initRagChat(config = {}) {
                 captchaToken = result.newToken;
                 captchaVerified = true;
                 removeCaptchaUI();
-                checkAndEnableChat();
                 
-                // If user answered welcome question, send it to LLM now
-                if (welcomeAnswered && chatHistory.length > 0) {
+                // Check if agreements need to be shown next
+                if (mergedConfig.agreements) {
+                    renderAgreementsUI();
+                } else {
+                    checkAndEnableChat();
+                }
+                
+                // If user answered welcome question and no agreements, send it to LLM now
+                if (welcomeAnswered && !mergedConfig.agreements && chatHistory.length > 0) {
                     const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
                     // Show that we're processing the welcome answer
                     isWaitingForResponse = true;
@@ -741,6 +758,482 @@ function initRagChat(config = {}) {
         }
     };
 
+    // ========== AGREEMENT CONSENT FUNCTIONS ==========
+
+    /**
+     * Sanitize agreement HTML to prevent XSS attacks
+     * @param {string} html - HTML string to sanitize
+     * @returns {string} - Sanitized HTML
+     */
+    const sanitizeAgreementHtml = (html) => {
+        if (!html) return '';
+        
+        // Create a temporary container to parse HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        
+        // Find all links and validate them
+        const links = temp.querySelectorAll('a');
+        links.forEach(link => {
+            const href = link.getAttribute('href');
+            
+            // Validate href attribute
+            if (href) {
+                const lower = href.toLowerCase().trim();
+                // Reject dangerous protocols
+                if (
+                    lower.startsWith('javascript:') ||
+                    lower.startsWith('data:') ||
+                    lower.startsWith('vbscript:') ||
+                    lower.startsWith('file:')
+                ) {
+                    link.setAttribute('href', '#');
+                    link.setAttribute('data-blocked', 'true');
+                }
+                // Add security attributes for external links
+                else if (lower.startsWith('http://') || lower.startsWith('https://')) {
+                    link.setAttribute('target', '_blank');
+                    link.setAttribute('rel', 'noopener noreferrer');
+                }
+            }
+            
+            // Remove event handlers
+            const attributes = Array.from(link.attributes);
+            attributes.forEach(attr => {
+                if (attr.name.startsWith('on')) {
+                    link.removeAttribute(attr.name);
+                }
+            });
+        });
+        
+        // Remove all script tags
+        const scripts = temp.querySelectorAll('script');
+        scripts.forEach(script => script.remove());
+        
+        // Remove all style tags
+        const styles = temp.querySelectorAll('style');
+        styles.forEach(style => style.remove());
+        
+        return temp.innerHTML;
+    };
+
+    /**
+     * Show document modal with iframe
+     * @param {string} url - URL to display in modal
+     * @param {string} title - Modal title
+     */
+    const showDocumentModal = (url, title) => {
+        // Create backdrop
+        const backdrop = createElement('div', {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: '999999',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            boxSizing: 'border-box'
+        });
+
+        // Create modal container - responsive sizing
+        const isMobileView = window.innerWidth <= 768;
+        const modal = createElement('div', {
+            backgroundColor: '#ffffff',
+            borderRadius: isMobileView ? '12px' : '16px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            width: '100%',
+            maxWidth: isMobileView ? '100%' : '900px',
+            height: isMobileView ? '90vh' : '80vh',
+            maxHeight: isMobileView ? '90vh' : '800px',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
+        });
+
+        // Create header
+        const header = createElement('div', {
+            padding: '20px 24px',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#fafafa'
+        });
+
+        const titleEl = createElement('h3', {
+            margin: '0',
+            fontSize: '18px',
+            fontWeight: '600',
+            color: 'rgba(0, 0, 0, 0.87)',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)'
+        }, { textContent: title || mergedConfig.agreementsModalClose });
+
+        const closeButton = createElement('button', {
+            background: 'transparent',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: 'rgba(0, 0, 0, 0.54)',
+            padding: '4px',
+            lineHeight: '1',
+            transition: 'color 0.2s'
+        }, { innerHTML: '✕' });
+
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.color = 'rgba(0, 0, 0, 0.87)';
+        });
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.color = 'rgba(0, 0, 0, 0.54)';
+        });
+
+        appendChildren(header, [titleEl, closeButton]);
+
+        // Create iframe container
+        const iframeContainer = createElement('div', {
+            flex: '1',
+            overflow: 'hidden',
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column'
+        });
+
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.flex = '1';
+        iframe.style.border = 'none';
+        iframe.style.display = 'block';
+        iframe.style.backgroundColor = '#ffffff';
+        
+        // Set iframe attributes for security and functionality
+        iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('scrolling', 'yes');
+        // Allow same-origin for CSS, scripts for interactivity, and forms if needed
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+
+        iframeContainer.appendChild(iframe);
+        appendChildren(modal, [header, iframeContainer]);
+        backdrop.appendChild(modal);
+
+        // Close handlers
+        const closeModal = () => {
+            if (backdrop.parentNode) {
+                backdrop.parentNode.removeChild(backdrop);
+            }
+        };
+
+        closeButton.onclick = closeModal;
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) {
+                closeModal();
+            }
+        };
+
+        document.body.appendChild(backdrop);
+        
+        // Set src AFTER appending to DOM for proper rendering
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            iframe.src = url;
+        }, 10);
+    };
+
+    /**
+     * Get stored consents from localStorage (domain-scoped)
+     * @returns {Object} - Object mapping agreement ID to timestamp
+     */
+    const getStoredConsents = () => {
+        try {
+            const key = `ragChatConsents_${window.location.hostname}`;
+            const stored = localStorage.getItem(key);
+            if (stored) {
+                return JSON.parse(stored);
+            }
+        } catch (error) {
+            console.error('Error reading stored consents:', error);
+        }
+        return {};
+    };
+
+    /**
+     * Save consents to localStorage (domain-scoped)
+     * @param {Array} consentsArray - Array of { id, timestamp }
+     */
+    const saveConsents = (consentsArray) => {
+        try {
+            const key = `ragChatConsents_${window.location.hostname}`;
+            const consentsMap = {};
+            consentsArray.forEach(consent => {
+                consentsMap[consent.id] = { timestamp: consent.timestamp };
+            });
+            localStorage.setItem(key, JSON.stringify(consentsMap));
+        } catch (error) {
+            console.error('Error saving consents:', error);
+        }
+    };
+
+    /**
+     * Check if all required consents exist in localStorage
+     * @param {Array} requiredIds - Array of required agreement IDs
+     * @returns {boolean} - True if all required consents exist
+     */
+    const checkConsentsValid = (requiredIds) => {
+        const stored = getStoredConsents();
+        return requiredIds.every(id => stored[id] && stored[id].timestamp);
+    };
+
+    /**
+     * Render agreements UI with checkboxes
+     */
+    const renderAgreementsUI = () => {
+        if (!mergedConfig.agreements || mergedConfig.agreements.length === 0) {
+            return;
+        }
+
+        if (agreementsContainer) {
+            removeAgreementsUI();
+        }
+
+        // Check if consents already exist in localStorage
+        const requiredIds = mergedConfig.agreements.map(a => a.id);
+        if (checkConsentsValid(requiredIds)) {
+            agreementsAccepted = true;
+            checkAndEnableChat();
+            return;
+        }
+
+        // Initialize agreement states
+        agreementStates = {};
+        mergedConfig.agreements.forEach(agreement => {
+            agreementStates[agreement.id] = false;
+        });
+
+        // Create container
+        agreementsContainer = createElement('div', {
+            padding: '24px',
+            margin: '16px 0',
+            backgroundColor: '#fafafa',
+            borderRadius: '16px',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+        });
+
+        // Create title
+        const title = createElement('div', {
+            fontSize: '16px',
+            fontWeight: '600',
+            marginBottom: '16px',
+            color: 'rgba(0, 0, 0, 0.87)',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)'
+        }, {
+            textContent: mergedConfig.locale === 'ru' 
+                ? 'Для продолжения необходимо принять соглашения'
+                : 'Please accept the following agreements to continue'
+        });
+
+        agreementsContainer.appendChild(title);
+
+        // Create checkbox for each agreement
+        mergedConfig.agreements.forEach(agreement => {
+            const checkboxContainer = createElement('div', {
+                display: 'flex',
+                alignItems: 'flex-start',
+                marginBottom: '12px',
+                gap: '8px'
+            });
+
+            const checkbox = createElement('input', {
+                marginTop: '2px',
+                cursor: 'pointer',
+                flexShrink: '0'
+            }, {
+                type: 'checkbox',
+                id: `agreement_${agreement.id}`
+            });
+
+            checkbox.addEventListener('change', () => {
+                agreementStates[agreement.id] = checkbox.checked;
+                updateContinueButton();
+            });
+
+            const labelEl = createElement('label', {
+                fontSize: '14px',
+                lineHeight: '1.5',
+                color: 'rgba(0, 0, 0, 0.74)',
+                cursor: 'pointer',
+                fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)'
+            }, {
+                htmlFor: `agreement_${agreement.id}`
+            });
+
+            // Sanitize and set HTML
+            const sanitizedHtml = sanitizeAgreementHtml(agreement.labelHtml);
+            labelEl.innerHTML = sanitizedHtml;
+
+            // Handle modal links
+            if (agreement.modalUrl) {
+                const links = labelEl.querySelectorAll('a');
+                links.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        showDocumentModal(agreement.modalUrl, agreement.modalTitle);
+                    });
+                });
+            }
+
+            appendChildren(checkboxContainer, [checkbox, labelEl]);
+            agreementsContainer.appendChild(checkboxContainer);
+        });
+
+        // Create error message (hidden by default)
+        const errorMsg = createElement('div', {
+            fontSize: '13px',
+            color: '#d32f2f',
+            marginTop: '8px',
+            display: 'none',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)'
+        }, {
+            textContent: mergedConfig.agreementsAllRequired
+        });
+
+        agreementsContainer.appendChild(errorMsg);
+
+        // Create continue button
+        const continueButton = createElement('button', {
+            marginTop: '16px',
+            padding: '12px 24px',
+            backgroundColor: mergedConfig.sendButtonColor || '#635bff',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '12px',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: '600',
+            fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)',
+            transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)',
+            opacity: '0.5',
+            width: '100%'
+        }, {
+            textContent: mergedConfig.agreementsContinueButton,
+            disabled: true
+        });
+
+        const updateContinueButton = () => {
+            const allChecked = Object.values(agreementStates).every(checked => checked);
+            continueButton.disabled = !allChecked;
+            continueButton.style.opacity = allChecked ? '1' : '0.5';
+            continueButton.style.cursor = allChecked ? 'pointer' : 'not-allowed';
+            errorMsg.style.display = 'none';
+        };
+
+        continueButton.addEventListener('mouseenter', () => {
+            if (!continueButton.disabled) {
+                continueButton.style.transform = 'translateY(-1px)';
+                continueButton.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.18)';
+            }
+        });
+
+        continueButton.addEventListener('mouseleave', () => {
+            continueButton.style.transform = 'translateY(0)';
+            continueButton.style.boxShadow = 'none';
+        });
+
+        continueButton.onclick = async () => {
+            const allChecked = Object.values(agreementStates).every(checked => checked);
+            
+            if (!allChecked) {
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            continueButton.disabled = true;
+            continueButton.style.opacity = '0.6';
+            continueButton.textContent = mergedConfig.locale === 'ru' ? 'Сохранение...' : 'Saving...';
+
+            // Build consents array
+            const timestamp = Date.now();
+            const consents = mergedConfig.agreements.map(agreement => ({
+                id: agreement.id,
+                accepted: true,
+                timestamp: timestamp
+            }));
+
+            // Save to localStorage
+            saveConsents(consents);
+            agreementsAccepted = true;
+
+            // Send to backend if endpoint configured
+            if (mergedConfig.agreementsEndpoint) {
+                try {
+                    const sessionId = getSessionId();
+                    await fetch(mergedConfig.agreementsEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sessionId,
+                            consents
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error sending consents to backend:', error);
+                    // Continue anyway - localStorage is primary
+                }
+            }
+
+            // Remove UI and enable chat
+            removeAgreementsUI();
+            
+            // If user answered welcome question, send it to LLM now
+            if (welcomeAnswered && chatHistory.length > 0) {
+                const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
+                // Show that we're processing the welcome answer
+                isWaitingForResponse = true;
+                preloaderContainer.style.display = 'block';
+                chatInput.disabled = true;
+                
+                // Send welcome answer to LLM
+                try {
+                    await sendMessageToLLM(welcomeAnswer);
+                } catch (error) {
+                    console.error('Error sending welcome answer to LLM:', error);
+                    addMessage('System', mergedConfig.locale === 'ru' 
+                        ? 'Ошибка при отправке сообщения. Попробуйте еще раз.'
+                        : 'Error sending message. Please try again.');
+                } finally {
+                    isWaitingForResponse = false;
+                    preloaderContainer.style.display = 'none';
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                }
+            } else {
+                checkAndEnableChat();
+            }
+        };
+
+        agreementsContainer.appendChild(continueButton);
+        chatMessages.appendChild(agreementsContainer);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+
+    /**
+     * Remove agreements UI
+     */
+    const removeAgreementsUI = () => {
+        if (agreementsContainer && agreementsContainer.parentNode) {
+            agreementsContainer.parentNode.removeChild(agreementsContainer);
+            agreementsContainer = null;
+        }
+    };
+
+    // ========== END AGREEMENT CONSENT FUNCTIONS ==========
+
     const renderWelcomeQuestion = () => {
         if (!mergedConfig.welcomeQuestion || welcomeAnswered) {
             return;
@@ -758,8 +1251,9 @@ function initRagChat(config = {}) {
         // Check if all requirements are met
         const welcomeOk = !mergedConfig.requireWelcomeAnswer || welcomeAnswered;
         const captchaOk = !mergedConfig.captchaEnabled || captchaVerified;
+        const agreementsOk = !mergedConfig.agreements || agreementsAccepted;
 
-        if (welcomeOk && captchaOk) {
+        if (welcomeOk && captchaOk && agreementsOk) {
             chatInput.disabled = false;
             chatInput.placeholder = 'Type your message...';
             chatInput.focus();
@@ -769,6 +1263,10 @@ function initRagChat(config = {}) {
                 chatInput.placeholder = 'Please answer the welcome question first...';
             } else if (!captchaOk) {
                 chatInput.placeholder = 'Please complete CAPTCHA verification...';
+            } else if (!agreementsOk) {
+                chatInput.placeholder = mergedConfig.locale === 'ru' 
+                    ? 'Пожалуйста, примите соглашения...' 
+                    : 'Please accept the agreements...';
             }
         }
     };
@@ -789,6 +1287,13 @@ function initRagChat(config = {}) {
             chatInput.placeholder = mergedConfig.locale === 'ru' 
                 ? 'Пожалуйста, пройдите проверку CAPTCHA...' 
                 : 'Please complete CAPTCHA verification...';
+        } else if (mergedConfig.agreements) {
+            // Show agreements directly if no welcome question or CAPTCHA
+            renderAgreementsUI();
+            chatInput.disabled = true;
+            chatInput.placeholder = mergedConfig.locale === 'ru' 
+                ? 'Пожалуйста, примите соглашения...' 
+                : 'Please accept the agreements...';
         } else {
             // No security features enabled, enable chat
             checkAndEnableChat();
@@ -802,14 +1307,17 @@ function initRagChat(config = {}) {
         welcomeAnswered = false;
         captchaVerified = false;
         captchaToken = null;
+        agreementsAccepted = false;
+        agreementStates = {};
+        // Note: DO NOT clear localStorage consents - they persist across sessions
         // Re-initialize security features after clearing
-        if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled) {
+        if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled || mergedConfig.agreements) {
             initializeSecurityFeatures();
         }
     });
 
     // Initialize security features on load if needed
-    if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled) {
+    if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled || mergedConfig.agreements) {
         // If no chat history, initialize security features immediately
         if (chatHistory.length === 0) {
             // For autoOpen mode (embedded widgets), initialize immediately
@@ -942,8 +1450,18 @@ function initRagChat(config = {}) {
                 return;
             }
             
-            // If no CAPTCHA required, send to LLM immediately
-            if (!mergedConfig.captchaEnabled) {
+            // Show agreements if enabled and not CAPTCHA (agreements after CAPTCHA are handled in CAPTCHA callback)
+            if (!mergedConfig.captchaEnabled && mergedConfig.agreements && !agreementsAccepted) {
+                renderAgreementsUI();
+                chatInput.disabled = true;
+                chatInput.placeholder = mergedConfig.locale === 'ru' 
+                    ? 'Пожалуйста, примите соглашения...' 
+                    : 'Please accept the agreements...';
+                return;
+            }
+            
+            // If no CAPTCHA or agreements required, send to LLM immediately
+            if (!mergedConfig.captchaEnabled && !mergedConfig.agreements) {
                 isWaitingForResponse = true;
                 preloaderContainer.style.display = 'block';
                 chatInput.disabled = true;
