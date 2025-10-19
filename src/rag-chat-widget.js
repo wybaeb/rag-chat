@@ -501,6 +501,12 @@ function initRagChat(config = {}) {
 
         isShowingCaptcha = true;
 
+        // Add agent message introducing CAPTCHA
+        const captchaIntroText = mergedConfig.locale === 'ru' 
+            ? 'Прежде чем ответить, прошу подтвердить, что вы человек:'
+            : 'Before I respond, please confirm that you are human:';
+        addMessage('Agent', captchaIntroText);
+
         // Modern glassmorphism container matching design system
         captchaContainer = createElement('div', {
             padding: '24px',
@@ -681,10 +687,12 @@ function initRagChat(config = {}) {
                     renderAgreementsUI();
                 } else {
                     checkAndEnableChat();
+                    // Send pending message if all checks passed and no agreements required
+                    sendPendingMessageIfReady();
                 }
                 
-                // If user answered welcome question and no agreements, send it to LLM now
-                if (welcomeAnswered && !mergedConfig.agreements && chatHistory.length > 0) {
+                // Legacy handling (can be removed, covered by sendPendingMessageIfReady)
+                if (false && welcomeAnswered && !mergedConfig.agreements && chatHistory.length > 0) {
                     const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
                     // Show that we're processing the welcome answer
                     isWaitingForResponse = true;
@@ -1004,8 +1012,16 @@ function initRagChat(config = {}) {
         if (checkConsentsValid(requiredIds)) {
             agreementsAccepted = true;
             checkAndEnableChat();
+            // Send pending message to LLM if exists
+            sendPendingMessageIfReady();
             return;
         }
+
+        // Add agent message introducing agreements
+        const agreementIntroText = mergedConfig.locale === 'ru'
+            ? 'Также мне нужно получить от вас следующие согласия:'
+            : 'I also need to get the following consents from you:';
+        addMessage('Agent', agreementIntroText);
 
         // Initialize agreement states
         agreementStates = {};
@@ -1013,27 +1029,27 @@ function initRagChat(config = {}) {
             agreementStates[agreement.id] = false;
         });
 
-        // Create container
+        // Create container styled like message bubble
         agreementsContainer = createElement('div', {
-            padding: '24px',
-            margin: '16px 0',
-            backgroundColor: '#fafafa',
-            borderRadius: '16px',
-            border: '1px solid rgba(0, 0, 0, 0.08)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+            padding: '20px',
+            margin: '12px 12px 12px 48px',
+            backgroundColor: 'rgba(240, 240, 255, 0.4)',
+            borderRadius: '16px 16px 16px 4px',
+            border: '1px solid rgba(102, 126, 234, 0.2)',
+            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.08)'
         });
 
-        // Create title
+        // Create title (more narrative)
         const title = createElement('div', {
-            fontSize: '16px',
-            fontWeight: '600',
-            marginBottom: '16px',
-            color: 'rgba(0, 0, 0, 0.87)',
+            fontSize: '14px',
+            fontWeight: '500',
+            marginBottom: '12px',
+            color: 'rgba(0, 0, 0, 0.7)',
             fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)'
         }, {
             textContent: mergedConfig.locale === 'ru' 
-                ? 'Для продолжения необходимо принять соглашения'
-                : 'Please accept the following agreements to continue'
+                ? 'Пожалуйста, отметьте следующие пункты:'
+                : 'Please check the following items:'
         });
 
         agreementsContainer.appendChild(title);
@@ -1234,6 +1250,41 @@ function initRagChat(config = {}) {
 
     // ========== END AGREEMENT CONSENT FUNCTIONS ==========
 
+    /**
+     * Send pending message to LLM if all security checks passed
+     */
+    const sendPendingMessageIfReady = async () => {
+        // Check if all requirements are met
+        const welcomeOk = !mergedConfig.requireWelcomeAnswer || welcomeAnswered;
+        const captchaOk = !mergedConfig.captchaEnabled || captchaVerified;
+        const agreementsOk = !mergedConfig.agreements || agreementsAccepted;
+
+        if (welcomeOk && captchaOk && agreementsOk && chatHistory.length > 0) {
+            const lastMessage = chatHistory[chatHistory.length - 1];
+            if (lastMessage && lastMessage.role === 'user') {
+                // Show that we're processing
+                isWaitingForResponse = true;
+                preloaderContainer.style.display = 'block';
+                chatInput.disabled = true;
+                
+                // Send to LLM
+                try {
+                    await sendMessageToLLM(lastMessage.content);
+                } catch (error) {
+                    console.error('Error sending pending message to LLM:', error);
+                    addMessage('System', mergedConfig.locale === 'ru' 
+                        ? 'Ошибка при отправке сообщения. Попробуйте ещё раз.'
+                        : 'Error sending message. Please try again.');
+                } finally {
+                    isWaitingForResponse = false;
+                    preloaderContainer.style.display = 'none';
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                }
+            }
+        }
+    };
+
     const renderWelcomeQuestion = () => {
         if (!mergedConfig.welcomeQuestion || welcomeAnswered) {
             return;
@@ -1309,7 +1360,13 @@ function initRagChat(config = {}) {
         captchaToken = null;
         agreementsAccepted = false;
         agreementStates = {};
-        // Note: DO NOT clear localStorage consents - they persist across sessions
+        // Clear localStorage consents as well (fresh start)
+        try {
+            const key = `ragChatConsents_${window.location.hostname}`;
+            localStorage.removeItem(key);
+        } catch (error) {
+            console.error('Error clearing consents from localStorage:', error);
+        }
         // Re-initialize security features after clearing
         if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled || mergedConfig.agreements) {
             initializeSecurityFeatures();
