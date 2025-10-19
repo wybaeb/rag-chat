@@ -60,6 +60,7 @@ function initRagChat(config = {}) {
         // Appearance options
         cover: null, // Cover image URL
         showCover: false, // Show cover before first message
+        coverDisplayMode: 'adaptive', // 'adaptive', 'framed', 'natural'
         agentAvatar: null, // Agent avatar image URL
         userAvatar: null, // User avatar image URL
         showAvatar: false, // Show avatars in messages
@@ -445,6 +446,19 @@ function initRagChat(config = {}) {
     let coverElement = null;
     const renderCover = () => {
         if (mergedConfig.showCover && mergedConfig.cover && !coverElement) {
+            // Determine display mode
+            const mode = mergedConfig.coverDisplayMode || 'adaptive';
+            const coverUrl = mergedConfig.cover;
+            
+            // Check if image is transparent format (PNG, SVG, WebP with transparency)
+            const isTransparentFormat = coverUrl.match(/\.(png|svg|webp)(\?|$)/i);
+            
+            // Determine final display style
+            let useFrame = mode === 'framed';
+            if (mode === 'adaptive') {
+                useFrame = !isTransparentFormat; // Use frame for non-transparent formats
+            }
+            
             coverElement = createElement('div', {
                 display: 'flex',
                 justifyContent: 'center',
@@ -453,14 +467,22 @@ function initRagChat(config = {}) {
                 marginBottom: '12px',
             });
             
-            const coverImg = createElement('img', {
+            const imgStyles = {
                 maxWidth: '100%',
                 maxHeight: '300px',
-                borderRadius: '16px',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 objectFit: 'contain',
-            }, {
-                src: mergedConfig.cover,
+            };
+            
+            // Add frame styling if needed
+            if (useFrame) {
+                imgStyles.borderRadius = '16px';
+                imgStyles.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                imgStyles.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+                imgStyles.padding = '12px';
+            }
+            
+            const coverImg = createElement('img', imgStyles, {
+                src: coverUrl,
                 alt: 'Cover'
             });
             
