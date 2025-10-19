@@ -57,10 +57,35 @@ function initRagChat(config = {}) {
         agreementsContinueButton: 'Continue',
         agreementsAllRequired: 'Please accept all agreements to continue',
         agreementsModalClose: 'Close',
+        // Appearance options
+        cover: null, // Cover image URL
+        showCover: false, // Show cover before first message
+        agentAvatar: null, // Agent avatar image URL
+        userAvatar: null, // User avatar image URL
+        showAvatar: false, // Show avatars in messages
+        avatarBorderRadius: '50%', // Avatar border radius (e.g., '50%' for circle, '0%' for square)
+        userLabel: '', // Label for user messages (empty to hide)
+        agentLabel: '', // Label for agent messages (empty to hide)
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
     const styles = createStyles(mergedConfig);
+    
+    // Inject bouncing dots CSS animation
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(styleEl);
 
     // Check if we're in sidebar mode
     const isSidebarMode = mergedConfig.mode === 'sidebar';
@@ -265,33 +290,6 @@ function initRagChat(config = {}) {
     const inputContainer = createElement('div', styles.inputContainer);
     const chatInput = createElement('input', styles.chatInput, { type: 'text', placeholder: 'Type your message...' });
     const sendButton = createElement('button', styles.sendButton, { innerHTML: '&#10148;' });
-    const preloaderContainer = createElement('div', styles.preloaderContainer);
-    const preloader = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    preloader.setAttribute('width', '60');
-    preloader.setAttribute('height', '60');
-    preloader.setAttribute('viewBox', '0 0 60 60');
-    preloader.innerHTML = `
-        <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" style="stop-color:#a75bff;stop-opacity:1" />
-                <stop offset="57%" style="stop-color:#635bff;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#635bff;stop-opacity:0" />
-            </linearGradient>
-        </defs>
-        <circle cx="30" cy="30" r="25" stroke="url(#gradient)" stroke-width="5" fill="none">
-            <animateTransform
-                attributeName="transform"
-                type="rotate"
-                from="0 30 30"
-                to="360 30 30"
-                dur="1s"
-                repeatCount="indefinite" />
-        </circle>
-    `;
-    Object.assign(preloader.style, styles.preloader);
-
-    preloaderContainer.style.display = 'none';
-    preloaderContainer.appendChild(preloader);
 
     // Close button for sidebar mode
     const sidebarCloseButton = isSidebarMode ? createElement('button', {
@@ -354,7 +352,7 @@ function initRagChat(config = {}) {
     }
 
     appendChildren(inputContainer, [chatInput, sendButton]);
-    appendChildren(chatContainer, [chatHeader, chatMessages, preloaderContainer, inputContainer]);
+    appendChildren(chatContainer, [chatHeader, chatMessages, inputContainer]);
 
     // Append to appropriate container
     if (isSidebarMode && sidebarContainer) {
@@ -429,12 +427,10 @@ function initRagChat(config = {}) {
         if (message && !isWaitingForResponse) {
             chatInput.value = '';
             isWaitingForResponse = true;
-            preloaderContainer.style.display = 'block';
             try {
                 await handleMessage(message, chatMessages, chatHistory, mergedConfig);
             } finally {
                 isWaitingForResponse = false;
-                preloaderContainer.style.display = 'none';
             }
         }
     };
@@ -445,15 +441,154 @@ function initRagChat(config = {}) {
 
     sendButton.addEventListener('click', sendMessage);
 
-    loadChatHistory(chatMessages, chatHistory, mergedConfig);
+    // Render cover image if configured and history is empty
+    let coverElement = null;
+    const renderCover = () => {
+        if (mergedConfig.showCover && mergedConfig.cover && !coverElement) {
+            coverElement = createElement('div', {
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '20px',
+                marginBottom: '12px',
+            });
+            
+            const coverImg = createElement('img', {
+                maxWidth: '100%',
+                maxHeight: '300px',
+                borderRadius: '16px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                objectFit: 'contain',
+            }, {
+                src: mergedConfig.cover,
+                alt: 'Cover'
+            });
+            
+            coverElement.appendChild(coverImg);
+            chatMessages.insertBefore(coverElement, chatMessages.firstChild);
+        }
+    };
+    
+    const removeCover = () => {
+        if (coverElement && coverElement.parentNode) {
+            coverElement.parentNode.removeChild(coverElement);
+            coverElement = null;
+        }
+    };
 
-    const addMessage = (sender, text) => {
+    const addMessage = (sender, text, showBouncingDots = false) => {
+        // Create message container with avatar if needed
+        const messageContainer = createElement('div', {
+            display: 'flex',
+            flexDirection: sender === 'User' ? 'row-reverse' : 'row',
+            alignItems: 'flex-end',
+            gap: '8px',
+            marginBottom: '12px',
+            marginLeft: sender === 'User' ? '0' : '12px',
+            marginRight: sender === 'User' ? '12px' : '0',
+        });
+        
+        // Add avatar if configured
+        if (mergedConfig.showAvatar && sender === 'Agent' && mergedConfig.agentAvatar) {
+            const avatar = createElement('img', {
+                width: '32px',
+                height: '32px',
+                borderRadius: mergedConfig.avatarBorderRadius,
+                objectFit: 'cover',
+                flexShrink: '0',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+            }, {
+                src: mergedConfig.agentAvatar,
+                alt: 'Agent'
+            });
+            messageContainer.appendChild(avatar);
+        } else if (mergedConfig.showAvatar && sender === 'User' && mergedConfig.userAvatar) {
+            const avatar = createElement('img', {
+                width: '32px',
+                height: '32px',
+                borderRadius: mergedConfig.avatarBorderRadius,
+                objectFit: 'cover',
+                flexShrink: '0',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+            }, {
+                src: mergedConfig.userAvatar,
+                alt: 'User'
+            });
+            messageContainer.appendChild(avatar);
+        }
+        
+        // Create message content wrapper
+        const messageWrapper = createElement('div', {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            maxWidth: '80%',
+        });
+        
+        // Add label if configured
+        const label = sender === 'User' ? mergedConfig.userLabel : mergedConfig.agentLabel;
+        if (label) {
+            const labelElement = createElement('div', {
+                fontSize: '11px',
+                color: 'rgba(0, 0, 0, 0.54)',
+                paddingLeft: sender === 'User' ? '0' : '4px',
+                paddingRight: sender === 'User' ? '4px' : '0',
+                textAlign: sender === 'User' ? 'right' : 'left',
+                fontWeight: '500',
+            }, {
+                textContent: label
+            });
+            messageWrapper.appendChild(labelElement);
+        }
+        
+        // Create message bubble
         const messageElement = createElement('div', sender === 'User' ? styles.messageUser : styles.messageAgent);
-        messageElement.innerHTML = sender === 'User' ? text : marked(text);
-        chatMessages.appendChild(messageElement);
+        
+        if (showBouncingDots) {
+            // Create bouncing dots loader
+            const dotsContainer = createElement('div', {
+                display: 'flex',
+                gap: '4px',
+                alignItems: 'center',
+                padding: '4px 0',
+            });
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = createElement('div', {
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    animation: `bounce 1.4s infinite ease-in-out both`,
+                    animationDelay: `${i * 0.16}s`,
+                });
+                dotsContainer.appendChild(dot);
+            }
+            
+            messageElement.appendChild(dotsContainer);
+        } else {
+            messageElement.innerHTML = sender === 'User' ? text : marked(text);
+        }
+        
+        messageWrapper.appendChild(messageElement);
+        messageContainer.appendChild(messageWrapper);
+        chatMessages.appendChild(messageContainer);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
         return messageElement;
     };
+    
+    // Load chat history and render with avatars and labels
+    loadChatHistory(chatMessages, chatHistory, mergedConfig);
+    chatHistory.forEach(msg => {
+        const sender = msg.role === 'user' ? 'User' : 'Agent';
+        addMessage(sender, msg.content);
+    });
+    
+    // Show cover if history is empty
+    if (chatHistory.length === 0) {
+        renderCover();
+    }
 
     // CAPTCHA functions
     const loadCaptcha = async () => {
@@ -691,29 +826,6 @@ function initRagChat(config = {}) {
                     sendPendingMessageIfReady();
                 }
                 
-                // Legacy handling (can be removed, covered by sendPendingMessageIfReady)
-                if (false && welcomeAnswered && !mergedConfig.agreements && chatHistory.length > 0) {
-                    const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
-                    // Show that we're processing the welcome answer
-                    isWaitingForResponse = true;
-                    preloaderContainer.style.display = 'block';
-                    chatInput.disabled = true;
-                    
-                    // Send welcome answer to LLM
-                    try {
-                        await sendMessageToLLM(welcomeAnswer);
-                    } catch (error) {
-                        console.error('Error sending welcome answer to LLM:', error);
-                        addMessage('System', mergedConfig.locale === 'ru' 
-                            ? 'Ошибка при отправке сообщения. Попробуйте еще раз.'
-                            : 'Error sending message. Please try again.');
-                    } finally {
-                        isWaitingForResponse = false;
-                        preloaderContainer.style.display = 'none';
-                        chatInput.disabled = false;
-                        chatInput.focus();
-                    }
-                }
             } else {
                 errorDiv.textContent = result.error || mergedConfig.captchaErrorMessage;
                 inputField.value = '';
@@ -1211,7 +1323,6 @@ function initRagChat(config = {}) {
                 const welcomeAnswer = chatHistory[chatHistory.length - 1].content;
                 // Show that we're processing the welcome answer
                 isWaitingForResponse = true;
-                preloaderContainer.style.display = 'block';
                 chatInput.disabled = true;
                 
                 // Send welcome answer to LLM
@@ -1224,7 +1335,6 @@ function initRagChat(config = {}) {
                         : 'Error sending message. Please try again.');
                 } finally {
                     isWaitingForResponse = false;
-                    preloaderContainer.style.display = 'none';
                     chatInput.disabled = false;
                     chatInput.focus();
                 }
@@ -1264,7 +1374,6 @@ function initRagChat(config = {}) {
             if (lastMessage && lastMessage.role === 'user') {
                 // Show that we're processing
                 isWaitingForResponse = true;
-                preloaderContainer.style.display = 'block';
                 chatInput.disabled = true;
                 
                 // Send to LLM
@@ -1277,7 +1386,6 @@ function initRagChat(config = {}) {
                         : 'Error sending message. Please try again.');
                 } finally {
                     isWaitingForResponse = false;
-                    preloaderContainer.style.display = 'none';
                     chatInput.disabled = false;
                     chatInput.focus();
                 }
@@ -1367,6 +1475,8 @@ function initRagChat(config = {}) {
         } catch (error) {
             console.error('Error clearing consents from localStorage:', error);
         }
+        // Show cover again after clearing history
+        renderCover();
         // Re-initialize security features after clearing
         if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled || mergedConfig.agreements) {
             initializeSecurityFeatures();
@@ -1398,7 +1508,8 @@ function initRagChat(config = {}) {
 
     // Send message to LLM - extracted for reusability
     const sendMessageToLLM = async (message) => {
-        const agentMessageElement = addMessage('Agent', '');
+        // Show bouncing dots while waiting for response
+        const agentMessageElement = addMessage('Agent', '', true);
 
         try {
             // Get session ID
@@ -1434,7 +1545,6 @@ function initRagChat(config = {}) {
                     if (errorData.error === 'captcha_reverify' || errorData.error === 'captcha_required') {
                         agentMessageElement.innerHTML = 'Please complete CAPTCHA verification to continue.';
                         isWaitingForResponse = false;
-                        preloaderContainer.style.display = 'none';
                         chatInput.disabled = true;
                         captchaVerified = false;
                         await loadCaptcha();
@@ -1520,7 +1630,6 @@ function initRagChat(config = {}) {
             // If no CAPTCHA or agreements required, send to LLM immediately
             if (!mergedConfig.captchaEnabled && !mergedConfig.agreements) {
                 isWaitingForResponse = true;
-                preloaderContainer.style.display = 'block';
                 chatInput.disabled = true;
                 try {
                     await sendMessageToLLM(message);
@@ -1528,7 +1637,6 @@ function initRagChat(config = {}) {
                     // Error already logged in sendMessageToLLM
                 } finally {
                     isWaitingForResponse = false;
-                    preloaderContainer.style.display = 'none';
                     chatInput.disabled = false;
                     chatInput.focus();
                 }
@@ -1540,7 +1648,6 @@ function initRagChat(config = {}) {
         addMessage('User', message);
         chatInput.value = '';
         isWaitingForResponse = true;
-        preloaderContainer.style.display = 'block';
 
         try {
             await sendMessageToLLM(message);
@@ -1548,7 +1655,6 @@ function initRagChat(config = {}) {
             // Error already logged and displayed
         } finally {
             isWaitingForResponse = false;
-            preloaderContainer.style.display = 'none';
         }
     };
 

@@ -47,10 +47,8 @@ export function loadChatHistory(chatMessages, chatHistory, config) {
         try {
             const parsedHistory = JSON.parse(savedHistory);
             chatHistory.push(...parsedHistory);
-            parsedHistory.forEach(msg => {
-                const sender = msg.role === 'user' ? 'User' : 'Agent';
-                addMessage(sender, msg.content, chatMessages, config);
-            });
+            // Note: Messages are now rendered in the main widget using the addMessage function
+            // This allows for proper avatar and label support
         } catch (error) {
             console.error('Error loading chat history:', error);
         }
