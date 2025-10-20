@@ -13,8 +13,8 @@ function initRagChat(config = {}) {
         buttonCloseCaption: '✕',
         mobileCloseCaption: '✕',
         chatBackgroundColor: 'rgba(255, 255, 255, 0.9)',
-        chatBorderColor: '#ccc',
-        inputBackgroundColor: '#f0f0f0',
+        chatBorderColor: 'rgba(99, 91, 255, 0.2)',
+        inputBackgroundColor: 'rgba(245, 243, 255, 0.5)',
         sendButtonColor: '#635bff',
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
@@ -151,8 +151,8 @@ function initRagChat(config = {}) {
             transition: 'width 0.3s ease',
             overflow: 'hidden',
             position: 'relative',
-            borderLeft: mergedConfig.sidebarPosition === 'right' ? '1px solid #e0e0e0' : 'none',
-            borderRight: mergedConfig.sidebarPosition === 'left' ? '1px solid #e0e0e0' : 'none',
+            borderLeft: mergedConfig.sidebarPosition === 'right' ? '1px solid rgba(99, 91, 255, 0.15)' : 'none',
+            borderRight: mergedConfig.sidebarPosition === 'left' ? '1px solid rgba(99, 91, 255, 0.15)' : 'none',
         });
     }
 
@@ -543,44 +543,58 @@ function initRagChat(config = {}) {
     };
 
     const addMessage = (sender, text, showBouncingDots = false) => {
+        // Check if mobile view for avatar placement
+        const isMobileView = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
+        
         // Create message container with avatar if needed
         const messageContainer = createElement('div', {
             display: 'flex',
-            flexDirection: sender === 'User' ? 'row-reverse' : 'row',
-            alignItems: 'flex-end',
+            flexDirection: isMobileView ? 'column' : (sender === 'User' ? 'row-reverse' : 'row'),
+            alignItems: isMobileView ? (sender === 'User' ? 'flex-end' : 'flex-start') : 'flex-end',
             gap: '8px',
             marginBottom: '12px',
             marginLeft: sender === 'User' ? '0' : '12px',
             marginRight: sender === 'User' ? '12px' : '0',
         });
         
-        // Add avatar if configured
+        // Create avatar element if configured (will be added later in correct order)
+        let avatarElement = null;
         if (mergedConfig.showAvatar && sender === 'Agent' && mergedConfig.agentAvatar) {
-            const avatar = createElement('img', {
+            // Check if avatar is PNG format for adaptive styling
+            const isPngAvatar = mergedConfig.agentAvatar.match(/\.(png|webp)(\?|$)/i);
+            
+            avatarElement = createElement('img', {
                 width: '32px',
                 height: '32px',
                 borderRadius: mergedConfig.avatarBorderRadius,
                 objectFit: 'cover',
                 flexShrink: '0',
-                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+                boxShadow: isPngAvatar ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.1)',
             }, {
                 src: mergedConfig.agentAvatar,
                 alt: 'Agent'
             });
-            messageContainer.appendChild(avatar);
         } else if (mergedConfig.showAvatar && sender === 'User' && mergedConfig.userAvatar) {
-            const avatar = createElement('img', {
+            // Check if avatar is PNG format for adaptive styling
+            const isPngAvatar = mergedConfig.userAvatar.match(/\.(png|webp)(\?|$)/i);
+            
+            avatarElement = createElement('img', {
                 width: '32px',
                 height: '32px',
                 borderRadius: mergedConfig.avatarBorderRadius,
                 objectFit: 'cover',
                 flexShrink: '0',
-                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+                boxShadow: isPngAvatar ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.1)',
             }, {
                 src: mergedConfig.userAvatar,
                 alt: 'User'
             });
-            messageContainer.appendChild(avatar);
+        }
+        
+        // On desktop: add avatar before message wrapper
+        // On mobile: avatar will be added after message wrapper (below the bubble)
+        if (avatarElement && !isMobileView) {
+            messageContainer.appendChild(avatarElement);
         }
         
         // Create message content wrapper
@@ -624,7 +638,7 @@ function initRagChat(config = {}) {
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    backgroundColor: 'rgba(99, 91, 255, 0.6)',
                     animation: `bounce 1.4s infinite ease-in-out both`,
                     animationDelay: `${i * 0.16}s`,
                 });
@@ -638,6 +652,12 @@ function initRagChat(config = {}) {
         
         messageWrapper.appendChild(messageElement);
         messageContainer.appendChild(messageWrapper);
+        
+        // On mobile: add avatar after message wrapper (below the bubble)
+        if (avatarElement && isMobileView) {
+            messageContainer.appendChild(avatarElement);
+        }
+        
         chatMessages.appendChild(messageContainer);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
@@ -737,9 +757,9 @@ function initRagChat(config = {}) {
             margin: '0 auto 16px',
             borderRadius: '12px',
             overflow: 'hidden',
-            border: '1px solid rgba(0, 0, 0, 0.12)',
-            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)',
-            backgroundColor: '#fff'
+            border: '1px solid rgba(99, 91, 255, 0.2)',
+            boxShadow: '0 1px 4px rgba(99, 91, 255, 0.1)',
+            backgroundColor: 'rgba(245, 243, 255, 0.3)'
         });
 
         const captchaImage = createElement('img', {
@@ -756,12 +776,12 @@ function initRagChat(config = {}) {
             maxWidth: '300px',
             padding: '12px 16px',
             marginBottom: '12px',
-            border: '1px solid rgba(0, 0, 0, 0.14)',
+            border: '1px solid rgba(99, 91, 255, 0.25)',
             borderRadius: '12px',
             fontSize: '16px',
             fontFamily: 'var(--bc-font-sans, ui-sans-serif, system-ui, -apple-system)',
             boxSizing: 'border-box',
-            backgroundColor: '#fff',
+            backgroundColor: 'rgba(245, 243, 255, 0.3)',
             color: 'rgba(0, 0, 0, 0.88)',
             transition: 'all 0.22s cubic-bezier(0.22, 0.61, 0.36, 1)',
             outline: 'none'
@@ -773,11 +793,11 @@ function initRagChat(config = {}) {
 
         // Focus state for input
         inputField.addEventListener('focus', () => {
-            inputField.style.borderColor = mergedConfig.sendButtonColor || '#D100FF';
-            inputField.style.boxShadow = `0 0 0 3px ${mergedConfig.sendButtonColor || '#D100FF'}15`;
+            inputField.style.borderColor = mergedConfig.sendButtonColor || '#635bff';
+            inputField.style.boxShadow = `0 0 0 3px rgba(99, 91, 255, 0.15)`;
         });
         inputField.addEventListener('blur', () => {
-            inputField.style.borderColor = 'rgba(0, 0, 0, 0.14)';
+            inputField.style.borderColor = 'rgba(99, 91, 255, 0.25)';
             inputField.style.boxShadow = 'none';
         });
 
@@ -840,8 +860,8 @@ function initRagChat(config = {}) {
         const reloadButton = createElement('button', {
             padding: '12px 20px',
             backgroundColor: 'transparent',
-            color: 'rgba(0, 0, 0, 0.64)',
-            border: '1px solid rgba(0, 0, 0, 0.14)',
+            color: 'rgba(99, 91, 255, 0.8)',
+            border: '1px solid rgba(99, 91, 255, 0.3)',
             borderRadius: '12px',
             cursor: 'pointer',
             fontSize: '15px',
@@ -853,12 +873,12 @@ function initRagChat(config = {}) {
 
         // Hover state for reload button
         reloadButton.addEventListener('mouseenter', () => {
-            reloadButton.style.backgroundColor = 'rgba(0, 0, 0, 0.04)';
-            reloadButton.style.borderColor = 'rgba(0, 0, 0, 0.24)';
+            reloadButton.style.backgroundColor = 'rgba(99, 91, 255, 0.08)';
+            reloadButton.style.borderColor = 'rgba(99, 91, 255, 0.5)';
         });
         reloadButton.addEventListener('mouseleave', () => {
             reloadButton.style.backgroundColor = 'transparent';
-            reloadButton.style.borderColor = 'rgba(0, 0, 0, 0.14)';
+            reloadButton.style.borderColor = 'rgba(99, 91, 255, 0.3)';
         });
 
         let currentToken = token;

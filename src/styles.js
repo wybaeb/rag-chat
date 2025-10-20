@@ -65,7 +65,7 @@ export function createStyles(config) {
             height: '600px',
             minHeight: '500px',
             backgroundColor: config.chatBackgroundColor || 'rgba(255, 255, 255, 0.95)',
-            border: `1px solid ${config.chatBorderColor || '#e0e0e0'}`,
+            border: `1px solid ${config.chatBorderColor || 'rgba(99, 91, 255, 0.2)'}`,
             borderRadius: '24px',
             display: 'flex',
             flexDirection: 'column',
@@ -73,7 +73,7 @@ export function createStyles(config) {
             overflow: 'hidden',
             fontFamily: config.fontFamily,
             fontSize: config.showcaseFontSize || '16px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            boxShadow: '0 8px 32px rgba(99, 91, 255, 0.15)',
             backdropFilter: 'blur(10px)',
             resize: 'none',
             margin: '0 auto',
@@ -85,7 +85,7 @@ export function createStyles(config) {
             padding: config.mode === 'showcase' ? '20px 24px' : '15px',
             //background: 'linear-gradient(to bottom, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 10%)',
             //backdropFilter: 'blur(5px)',
-            borderBottom: '1px solid rgba(204, 204, 204, 0.5)',
+            borderBottom: '1px solid rgba(99, 91, 255, 0.15)',
             position: 'sticky',
             top: 0,
             zIndex: 2,
@@ -118,7 +118,7 @@ export function createStyles(config) {
         },
         messageAgent: {
             alignSelf: 'flex-start',
-            backgroundColor: 'rgba(240, 240, 240, 0.9)', // Немного прозрачности
+            backgroundColor: 'rgba(232, 228, 255, 0.7)', // Светлый оттенок фирменного цвета
             borderRadius: config.mode === 'showcase' ? '18px 18px 18px 4px' : '15px 15px 15px 0',
             padding: config.mode === 'showcase' ? '14px 18px' : '12px 15px',
             maxWidth: '80%', // Увеличим максимальную ширину
@@ -126,11 +126,11 @@ export function createStyles(config) {
             wordBreak: 'break-word',
             fontSize: config.mode === 'showcase' ? (config.showcaseMessageFontSize || '18px') : '16px',
             lineHeight: config.mode === 'showcase' ? '1.6' : '1.5',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавим легкую тень
+            boxShadow: '0 2px 4px rgba(99, 91, 255, 0.15)', // Тень в фирменном цвете
             '& p': { margin: '0 0 10px 0' },
             '& p:last-child': { marginBottom: 0 },
             '& pre': {
-                backgroundColor: 'rgba(224, 224, 224, 0.7)',
+                backgroundColor: 'rgba(167, 91, 255, 0.08)',
                 padding: '10px',
                 borderRadius: '5px',
                 overflowX: 'auto',
@@ -138,7 +138,7 @@ export function createStyles(config) {
             },
             '& code': {
                 fontFamily: 'monospace',
-                backgroundColor: 'rgba(224, 224, 224, 0.7)',
+                backgroundColor: 'rgba(167, 91, 255, 0.08)',
                 padding: '2px 4px',
                 borderRadius: '3px',
                 whiteSpace: 'pre-wrap',
@@ -155,12 +155,12 @@ export function createStyles(config) {
                 display: 'block',
             },
             '& th, & td': {
-                border: '1px solid #ccc',
+                border: '1px solid rgba(99, 91, 255, 0.2)',
                 padding: '8px',
                 textAlign: 'left',
             },
             '& th': {
-                backgroundColor: 'rgba(224, 224, 224, 0.7)',
+                backgroundColor: 'rgba(167, 91, 255, 0.08)',
             },
         },
         messageUser: {
@@ -178,15 +178,15 @@ export function createStyles(config) {
         },
         inputContainer: {
             display: 'flex',
-            borderTop: '1px solid #ccc',
+            borderTop: '1px solid rgba(99, 91, 255, 0.15)',
             padding: config.mode === 'showcase' ? '20px 24px' : '15px',
         },
         chatInput: {
             flex: '1',
             padding: config.mode === 'showcase' ? '14px 18px' : '10px',
-            border: '1px solid #ccc',
+            border: '1px solid rgba(99, 91, 255, 0.2)',
             borderRadius: config.mode === 'showcase' ? '24px' : '20px',
-            backgroundColor: config.inputBackgroundColor,
+            backgroundColor: config.inputBackgroundColor || 'rgba(245, 243, 255, 0.5)',
             fontSize: config.mode === 'showcase' ? '16px' : '14px',
         },
         sendButton: {
