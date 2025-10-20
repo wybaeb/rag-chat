@@ -20,6 +20,7 @@ function initRagChat(config = {}) {
         fontSize: '14px',
         chatTitle: 'RAG Chat',
         clearButtonCaption: '🗑️ Clear History',
+        inputPlaceholder: 'Type your message...',
         mobileBreakpointWidth: 768,
         mobileBreakpointHeight: 600,
         chatMargin: 20,
@@ -29,12 +30,18 @@ function initRagChat(config = {}) {
         defaultChatHeight: 500,
         onStartResponse: null,
         // New sidebar mode options
-        mode: 'floating', // 'floating' or 'sidebar'
+        mode: 'floating', // 'floating', 'sidebar', or 'showcase'
         sidebarSelector: null, // CSS selector for sidebar container
         sidebarToggleSelector: null, // CSS selector for toggle button
         sidebarWidth: '25%', // Width when expanded
         sidebarCollapsedWidth: '0px', // Width when collapsed
         sidebarPosition: 'right', // 'left' or 'right'
+        // Showcase mode options
+        showcaseSelector: null, // CSS selector for showcase container (if null, appends to body)
+        showcaseMaxWidth: '1024px', // Maximum width of centered chat column
+        showcaseFontSize: '16px', // Base font size for showcase mode
+        showcaseMessageFontSize: '18px', // Message font size for showcase mode
+        showcasePadding: '24px', // Padding for showcase mode
         // Welcome question and CAPTCHA options
         welcomeQuestion: null,
         requireWelcomeAnswer: false,
@@ -88,11 +95,39 @@ function initRagChat(config = {}) {
     `;
     document.head.appendChild(styleEl);
 
-    // Check if we're in sidebar mode
+    // Check mode
     const isSidebarMode = mergedConfig.mode === 'sidebar';
+    const isShowcaseMode = mergedConfig.mode === 'showcase';
     let sidebarContainer = null;
     let sidebarToggleButton = null;
     let isSidebarOpen = false;
+    let showcaseContainer = null;
+
+    // Handle showcase mode
+    if (isShowcaseMode) {
+        // Auto-open in showcase mode
+        mergedConfig.autoOpen = true;
+        
+        // Find or create showcase container
+        if (mergedConfig.showcaseSelector) {
+            showcaseContainer = document.querySelector(mergedConfig.showcaseSelector);
+        }
+        
+        if (!showcaseContainer) {
+            // Create a default showcase container and append to body
+            showcaseContainer = createElement('div', {
+                width: '100%',
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '40px 20px',
+                boxSizing: 'border-box'
+            });
+            showcaseContainer.id = 'rag-chat-showcase-container';
+            document.body.appendChild(showcaseContainer);
+        }
+    }
 
     if (isSidebarMode) {
         // Find or create sidebar container
@@ -230,7 +265,13 @@ function initRagChat(config = {}) {
     const initialDimensions = getSavedDimensions();
 
     // Create chat container with mode-specific styles
-    const chatContainerStyles = isSidebarMode ? {
+    const chatContainerStyles = isShowcaseMode ? {
+        ...styles.showcaseChatContainer,
+        width: '100%',
+        maxWidth: mergedConfig.showcaseMaxWidth,
+        height: '600px',
+        display: 'flex', // Always visible in showcase mode
+    } : isSidebarMode ? {
         ...styles.sidebarChatContainer,
         width: '100%',
         height: '100%',
@@ -261,7 +302,7 @@ function initRagChat(config = {}) {
     let agreementsContainer = null;
 
     // Create chat button (only for floating mode)
-    const chatButton = !isSidebarMode ? createElement('button', styles.chatButton, {
+    const chatButton = (!isSidebarMode && !isShowcaseMode) ? createElement('button', styles.chatButton, {
         innerHTML: mergedConfig.buttonOpenCaption
     }) : null;
 
@@ -289,7 +330,7 @@ function initRagChat(config = {}) {
         overflowX: 'auto',
     });
     const inputContainer = createElement('div', styles.inputContainer);
-    const chatInput = createElement('input', styles.chatInput, { type: 'text', placeholder: 'Type your message...' });
+    const chatInput = createElement('input', styles.chatInput, { type: 'text', placeholder: mergedConfig.inputPlaceholder });
     const sendButton = createElement('button', styles.sendButton, { innerHTML: '&#10148;' });
 
     // Close button for sidebar mode
@@ -316,8 +357,8 @@ function initRagChat(config = {}) {
         innerHTML: mergedConfig.buttonCloseCaption
     }) : null;
 
-    // Mobile close button (for floating mode)
-    const mobileCloseButton = !isSidebarMode ? createElement('button', {
+    // Mobile close button (for floating mode only, not showcase)
+    const mobileCloseButton = (!isSidebarMode && !isShowcaseMode) ? createElement('button', {
         position: 'absolute',
         right: '15px',
         top: '50%',
@@ -356,7 +397,10 @@ function initRagChat(config = {}) {
     appendChildren(chatContainer, [chatHeader, chatMessages, inputContainer]);
 
     // Append to appropriate container
-    if (isSidebarMode && sidebarContainer) {
+    if (isShowcaseMode && showcaseContainer) {
+        // Showcase mode: append to showcase container
+        showcaseContainer.appendChild(chatContainer);
+    } else if (isSidebarMode && sidebarContainer) {
         sidebarContainer.appendChild(chatContainer);
         
         // Set up toggle button functionality
@@ -890,6 +934,12 @@ function initRagChat(config = {}) {
         appendChildren(captchaContainer, [title, imageContainer, inputField, errorDiv, buttonContainer]);
         chatMessages.appendChild(captchaContainer);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Focus input and scroll to show buttons
+        setTimeout(() => {
+            inputField.focus();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 100);
     };
 
     const removeCaptchaUI = () => {
@@ -1436,14 +1486,18 @@ function initRagChat(config = {}) {
 
         if (welcomeOk && captchaOk && agreementsOk) {
             chatInput.disabled = false;
-            chatInput.placeholder = 'Type your message...';
+            chatInput.placeholder = mergedConfig.inputPlaceholder;
             chatInput.focus();
         } else {
             chatInput.disabled = true;
             if (!welcomeOk) {
-                chatInput.placeholder = 'Please answer the welcome question first...';
+                chatInput.placeholder = mergedConfig.locale === 'ru' 
+                    ? 'Сначала ответьте на приветственный вопрос...' 
+                    : 'Please answer the welcome question first...';
             } else if (!captchaOk) {
-                chatInput.placeholder = 'Please complete CAPTCHA verification...';
+                chatInput.placeholder = mergedConfig.locale === 'ru' 
+                    ? 'Пожалуйста, пройдите проверку CAPTCHA...' 
+                    : 'Please complete CAPTCHA verification...';
             } else if (!agreementsOk) {
                 chatInput.placeholder = mergedConfig.locale === 'ru' 
                     ? 'Пожалуйста, примите соглашения...' 
@@ -1497,8 +1551,12 @@ function initRagChat(config = {}) {
         } catch (error) {
             console.error('Error clearing consents from localStorage:', error);
         }
-        // Show cover again after clearing history
-        renderCover();
+        // Remove any existing cover first to avoid duplicates
+        removeCover();
+        // Show cover again after clearing history (if configured)
+        if (mergedConfig.showCover && mergedConfig.cover) {
+            renderCover();
+        }
         // Re-initialize security features after clearing
         if (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled || mergedConfig.agreements) {
             initializeSecurityFeatures();
@@ -1716,8 +1774,8 @@ function initRagChat(config = {}) {
 
     // Update window resize handler
     window.addEventListener('resize', () => {
-        // Skip resize handling for sidebar mode
-        if (isSidebarMode) return;
+        // Skip resize handling for sidebar and showcase modes
+        if (isSidebarMode || isShowcaseMode) return;
         
         const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
         const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
@@ -1783,7 +1841,7 @@ function initRagChat(config = {}) {
     });
 
     // Add resize handles to container (only for floating mode)
-    if (!isSidebarMode) {
+    if (!isSidebarMode && !isShowcaseMode) {
         chatContainer.appendChild(resizeHandleTopLeft);
         chatContainer.appendChild(resizeHandleTop);
         chatContainer.appendChild(resizeHandleLeft);
@@ -1870,7 +1928,7 @@ function initRagChat(config = {}) {
     }
 
     // Add event listeners for all handles (only for floating mode)
-    if (!isSidebarMode) {
+    if (!isSidebarMode && !isShowcaseMode) {
         resizeHandleTopLeft.addEventListener('mousedown', (e) => initResize(e, 'topLeft'));
         resizeHandleTopLeft.addEventListener('touchstart', (e) => initResize(e, 'topLeft'));
         
@@ -1882,7 +1940,7 @@ function initRagChat(config = {}) {
     }
 
     // Trigger initial resize to set correct state (only for floating mode)
-    if (!isSidebarMode) {
+    if (!isSidebarMode && !isShowcaseMode) {
         window.dispatchEvent(new Event('resize'));
     }
 }
