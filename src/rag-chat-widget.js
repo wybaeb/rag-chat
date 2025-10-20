@@ -603,6 +603,8 @@ function initRagChat(config = {}) {
             flexDirection: 'column',
             gap: '4px',
             maxWidth: '80%',
+            minWidth: sender === 'User' ? '0' : '0',
+            width: 'auto',
         });
         
         // Add label if configured
@@ -902,6 +904,9 @@ function initRagChat(config = {}) {
                 captchaToken = result.newToken;
                 captchaVerified = true;
                 removeCaptchaUI();
+                
+                // Reset placeholder after successful CAPTCHA verification
+                chatInput.placeholder = mergedConfig.inputPlaceholder;
                 
                 // Check if agreements need to be shown next
                 if (mergedConfig.agreements) {
@@ -1409,6 +1414,9 @@ function initRagChat(config = {}) {
 
             // Remove UI and enable chat
             removeAgreementsUI();
+            
+            // Reset placeholder after successful agreements acceptance
+            chatInput.placeholder = mergedConfig.inputPlaceholder;
             
             // If user answered welcome question, send it to LLM now
             if (welcomeAnswered && chatHistory.length > 0) {
