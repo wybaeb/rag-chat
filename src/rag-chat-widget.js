@@ -1659,6 +1659,25 @@ function initRagChat(config = {}) {
                         return;
                     }
                 }
+                
+                // Handle quota exceeded (429)
+                if (response.status === 429) {
+                    try {
+                        const errorData = await response.json();
+                        const message = errorData.message || 
+                            (locale === 'ru' 
+                                ? '❌ Превышена месячная квота кредитов. Пожалуйста, обновите тарифный план.'
+                                : '❌ Monthly credit quota exceeded. Please upgrade your plan.');
+                        agentMessageElement.innerHTML = message;
+                    } catch {
+                        agentMessageElement.innerHTML = locale === 'ru'
+                            ? '❌ Превышена месячная квота кредитов'
+                            : '❌ Credit quota exceeded';
+                    }
+                    isWaitingForResponse = false;
+                    return;
+                }
+                
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
