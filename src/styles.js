@@ -122,9 +122,10 @@ export function createStyles(config) {
             backgroundColor: 'rgba(232, 228, 255, 0.7)', // Светлый оттенок фирменного цвета
             borderRadius: config.mode === 'showcase' ? '18px 18px 18px 4px' : '15px 15px 15px 0',
             padding: config.mode === 'showcase' ? '14px 18px' : '12px 15px',
-            maxWidth: '80%', // Увеличим максимальную ширину
+            maxWidth: '85%', // Увеличим максимальную ширину для более широких балунов
             marginBottom: config.mode === 'showcase' ? '16px' : '12px',
-            wordBreak: 'break-word',
+            wordBreak: 'normal', // Не разрывать слова без необходимости
+            overflowWrap: 'break-word', // Разрывать только если слово не помещается целиком
             fontSize: config.mode === 'showcase' ? (config.showcaseMessageFontSize || '18px') : '16px',
             lineHeight: config.mode === 'showcase' ? '1.6' : '1.5',
             boxShadow: '0 2px 4px rgba(99, 91, 255, 0.15)', // Тень в фирменном цвете
@@ -170,9 +171,10 @@ export function createStyles(config) {
             color: 'white',
             borderRadius: config.mode === 'showcase' ? '18px 18px 4px 18px' : '15px 15px 0 15px',
             padding: config.mode === 'showcase' ? '14px 18px' : '12px 15px',
-            maxWidth: '80%', // Увеличим максимальную ширину
+            maxWidth: '85%', // Увеличим максимальную ширину для более широких балунов
             marginBottom: config.mode === 'showcase' ? '16px' : '12px',
-            wordBreak: 'break-word',
+            wordBreak: 'normal', // Не разрывать слова без необходимости
+            overflowWrap: 'break-word', // Разрывать только если слово не помещается целиком
             fontSize: config.mode === 'showcase' ? (config.showcaseMessageFontSize || '18px') : '16px',
             lineHeight: config.mode === 'showcase' ? '1.6' : '1.5',
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавим легкую тень
