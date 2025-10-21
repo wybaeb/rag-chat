@@ -1664,10 +1664,12 @@ function initRagChat(config = {}) {
                 if (response.status === 429) {
                     try {
                         const errorData = await response.json();
+                        // Use localized message from server or fallback to client-side localization
                         const message = errorData.message || 
                             (locale === 'ru' 
                                 ? '❌ Превышен лимит запросов или месячная квота кредитов. Пожалуйста, подождите или обновите тарифный план.'
                                 : '❌ Request limit or monthly credit quota exceeded. Please wait or upgrade your plan.');
+                        
                         agentMessageElement.innerHTML = message;
                     } catch {
                         agentMessageElement.innerHTML = locale === 'ru'
