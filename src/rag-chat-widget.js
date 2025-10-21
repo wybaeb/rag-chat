@@ -1660,19 +1660,19 @@ function initRagChat(config = {}) {
                     }
                 }
                 
-                // Handle quota exceeded (429)
+                // Handle quota exceeded or rate limit (429)
                 if (response.status === 429) {
                     try {
                         const errorData = await response.json();
                         const message = errorData.message || 
                             (locale === 'ru' 
-                                ? '❌ Превышена месячная квота кредитов. Пожалуйста, обновите тарифный план.'
-                                : '❌ Monthly credit quota exceeded. Please upgrade your plan.');
+                                ? '❌ Превышен лимит запросов или месячная квота кредитов. Пожалуйста, подождите или обновите тарифный план.'
+                                : '❌ Request limit or monthly credit quota exceeded. Please wait or upgrade your plan.');
                         agentMessageElement.innerHTML = message;
                     } catch {
                         agentMessageElement.innerHTML = locale === 'ru'
-                            ? '❌ Превышена месячная квота кредитов'
-                            : '❌ Credit quota exceeded';
+                            ? '❌ Превышен лимит запросов или квота кредитов'
+                            : '❌ Request limit or credit quota exceeded';
                     }
                     isWaitingForResponse = false;
                     return;
