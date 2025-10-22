@@ -74,6 +74,12 @@ function initRagChat(config = {}) {
         avatarBorderRadius: '50%', // Avatar border radius (e.g., '50%' for circle, '0%' for square)
         userLabel: '', // Label for user messages (empty to hide)
         agentLabel: '', // Label for agent messages (empty to hide)
+        // Welcome message animation
+        streamWelcomeMessage: true, // Enable streaming animation for welcome message
+        welcomeAnimationMinDelay: 10, // Min milliseconds per pseudo-token (1-3 chars)
+        welcomeAnimationMaxDelay: 40, // Max milliseconds per pseudo-token (1-3 chars)
+        welcomeBouncingDotsDelay: 1000, // Milliseconds to show bouncing dots before streaming (non-showcase)
+        showcaseAnimationTimeout: 60000, // Fallback timeout in ms for showcase mode (60 seconds)
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
@@ -300,6 +306,11 @@ function initRagChat(config = {}) {
     let agreementsAccepted = false;
     let agreementStates = {}; // Map of agreement id -> checked state
     let agreementsContainer = null;
+
+    // Welcome message animation state
+    let isAnimatingWelcome = false;
+    let welcomeAnimationTriggered = false;
+    let welcomeIntersectionObserver = null;
 
     // Create chat button (only for floating mode)
     const chatButton = (!isSidebarMode && !isShowcaseMode) ? createElement('button', styles.chatButton, {
@@ -532,6 +543,12 @@ function initRagChat(config = {}) {
             
             coverElement.appendChild(coverImg);
             chatMessages.insertBefore(coverElement, chatMessages.firstChild);
+            
+            // Scroll to bottom to ensure avatar/message area is visible
+            // Cover can be cut off at top, but avatar area should always be visible
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
         }
     };
     
@@ -677,6 +694,11 @@ function initRagChat(config = {}) {
     if (chatHistory.length === 0) {
         renderCover();
     }
+    
+    // Scroll to bottom on initialization to ensure avatar/message area is visible
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 150);
 
     // CAPTCHA functions
     const loadCaptcha = async () => {
@@ -1493,17 +1515,142 @@ function initRagChat(config = {}) {
         }
     };
 
-    const renderWelcomeQuestion = () => {
-        if (!mergedConfig.welcomeQuestion || welcomeAnswered) {
+    // Helper function for delays
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // Split text into pseudo-tokens (1-3 characters randomly)
+    const splitIntoPseudoTokens = (text) => {
+        const tokens = [];
+        let i = 0;
+        while (i < text.length) {
+            // Random length between 1 and 3
+            const tokenLength = Math.floor(Math.random() * 3) + 1;
+            tokens.push(text.substr(i, tokenLength));
+            i += tokenLength;
+        }
+        return tokens;
+    };
+
+    // Stream text with animation
+    const streamText = async (messageElement, fullText) => {
+        if (!mergedConfig.streamWelcomeMessage) {
+            // No animation, just set the text
+            messageElement.innerHTML = marked(fullText);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
             return;
         }
 
-        const welcomeMessage = addMessage('Agent', mergedConfig.welcomeQuestion);
-        // IMPORTANT: Enable input for welcome question - it's a psychological engagement technique
-        // User answers freely, answer is saved locally, no LLM access needed yet
-        chatInput.disabled = false;
-        chatInput.placeholder = mergedConfig.locale === 'ru' ? 'Введите ваш ответ...' : 'Type your answer...';
-        chatInput.focus();
+        let currentText = '';
+        const tokens = splitIntoPseudoTokens(fullText);
+        
+        for (const token of tokens) {
+            if (!isAnimatingWelcome) {
+                // Animation was cancelled, show full text
+                messageElement.innerHTML = marked(fullText);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return;
+            }
+
+            currentText += token;
+            messageElement.innerHTML = marked(currentText);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Random delay between min and max
+            const delay = mergedConfig.welcomeAnimationMinDelay + 
+                         Math.random() * (mergedConfig.welcomeAnimationMaxDelay - mergedConfig.welcomeAnimationMinDelay);
+            await sleep(delay);
+        }
+    };
+
+    const renderWelcomeQuestion = async () => {
+        if (!mergedConfig.welcomeQuestion || welcomeAnswered || isAnimatingWelcome) {
+            return;
+        }
+
+        isAnimatingWelcome = true;
+
+        // For showcase mode, set up IntersectionObserver
+        if (isShowcaseMode) {
+            // Show bouncing dots immediately
+            const welcomeMessageElement = addMessage('Agent', '', true);
+
+            // Create a marker element at the bottom of chatMessages to observe
+            const bottomMarker = createElement('div', {
+                height: '1px',
+                width: '100%',
+            });
+            chatMessages.appendChild(bottomMarker);
+
+            let animationStarted = false;
+
+            const startWelcomeAnimation = async () => {
+                if (animationStarted) return;
+                animationStarted = true;
+                welcomeAnimationTriggered = true;
+
+                // Disconnect observer if exists
+                if (welcomeIntersectionObserver) {
+                    welcomeIntersectionObserver.disconnect();
+                    welcomeIntersectionObserver = null;
+                }
+
+                // Show bouncing dots for configured delay
+                await sleep(mergedConfig.welcomeBouncingDotsDelay);
+
+                // Stream the welcome message
+                await streamText(welcomeMessageElement, mergedConfig.welcomeQuestion);
+
+                // Remove bottom marker
+                if (bottomMarker.parentNode) {
+                    bottomMarker.parentNode.removeChild(bottomMarker);
+                }
+
+                isAnimatingWelcome = false;
+
+                // Enable input for welcome question
+                chatInput.disabled = false;
+                chatInput.placeholder = mergedConfig.locale === 'ru' ? 'Введите ваш ответ...' : 'Type your answer...';
+                chatInput.focus();
+            };
+
+            // Set up IntersectionObserver
+            welcomeIntersectionObserver = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting && !animationStarted) {
+                    startWelcomeAnimation();
+                }
+            }, { 
+                threshold: 0.1,
+                root: null // viewport
+            });
+
+            welcomeIntersectionObserver.observe(bottomMarker);
+
+            // Fallback timeout
+            setTimeout(() => {
+                if (!animationStarted) {
+                    startWelcomeAnimation();
+                }
+            }, mergedConfig.showcaseAnimationTimeout);
+
+        } else {
+            // Non-showcase mode (floating, sidebar)
+            // Show bouncing dots first
+            const welcomeMessageElement = addMessage('Agent', '', true);
+            
+            // Wait for configured delay
+            await sleep(mergedConfig.welcomeBouncingDotsDelay);
+            
+            // Stream the welcome message
+            await streamText(welcomeMessageElement, mergedConfig.welcomeQuestion);
+            
+            isAnimatingWelcome = false;
+
+            // IMPORTANT: Enable input for welcome question - it's a psychological engagement technique
+            // User answers freely, answer is saved locally, no LLM access needed yet
+            chatInput.disabled = false;
+            chatInput.placeholder = mergedConfig.locale === 'ru' ? 'Введите ваш ответ...' : 'Type your answer...';
+            chatInput.focus();
+        }
     };
 
     const checkAndEnableChat = () => {
@@ -1572,6 +1719,13 @@ function initRagChat(config = {}) {
         captchaToken = null;
         agreementsAccepted = false;
         agreementStates = {};
+        // Reset animation state
+        isAnimatingWelcome = false;
+        welcomeAnimationTriggered = false;
+        if (welcomeIntersectionObserver) {
+            welcomeIntersectionObserver.disconnect();
+            welcomeIntersectionObserver = null;
+        }
         // Clear localStorage consents as well (fresh start)
         try {
             const key = `ragChatConsents_${window.location.hostname}`;
