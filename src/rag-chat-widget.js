@@ -788,8 +788,9 @@ function initRagChat(config = {}) {
 
         const captchaImage = createElement('img', {
             width: '100%',
-            height: 'auto',
-            display: 'block'
+            height: '75%',
+            display: 'block',
+            objectFit: 'cover'
         }, { src: imageDataUrl });
 
         imageContainer.appendChild(captchaImage);
