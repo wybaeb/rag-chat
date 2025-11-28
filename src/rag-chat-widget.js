@@ -381,8 +381,10 @@ function initRagChat(config = {}) {
         button.style.justifyContent = 'center';
         button.style.pointerEvents = 'auto';
         button.style.position = 'relative';
-        button.style.width = `${WATERMARK_HOVER_DIMENSIONS.width}px`;
-        button.style.height = `${WATERMARK_HOVER_DIMENSIONS.height}px`;
+        button.style.width = `${WATERMARK_DEFAULT_DIMENSIONS.width}px`;
+        button.style.height = `${WATERMARK_DEFAULT_DIMENSIONS.height}px`;
+        button.style.transition = 'width 0.2s ease, height 0.2s ease, opacity 0.2s ease';
+        button.style.transformOrigin = 'top right';
 
         const makeLogo = (src) => {
         const logo = document.createElement('img');
@@ -409,10 +411,14 @@ function initRagChat(config = {}) {
                 hoverLogo.style.opacity = '1';
                 defaultLogo.style.opacity = '0';
                 button.style.opacity = '1';
+                button.style.width = `${WATERMARK_HOVER_DIMENSIONS.width}px`;
+                button.style.height = `${WATERMARK_HOVER_DIMENSIONS.height}px`;
             } else {
                 hoverLogo.style.opacity = '0';
                 defaultLogo.style.opacity = '1';
                 button.style.opacity = '0.85';
+                button.style.width = `${WATERMARK_DEFAULT_DIMENSIONS.width}px`;
+                button.style.height = `${WATERMARK_DEFAULT_DIMENSIONS.height}px`;
             }
         };
         const resetState = () => setState('default');
