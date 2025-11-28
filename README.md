@@ -78,6 +78,16 @@ RagChat({
     fontFamily: 'Arial, sans-serif', // Font family
     fontSize: '14px', // Font size
 
+    // Watermark / attribution (all optional, useful for SaaS deployments)
+    showWatermark: false, // Force a static watermark (fallback while remote policy loads)
+    watermarkDefault: '/watermark/lite_watermark.svg', // Default SVG/logo
+    watermarkHover: '/watermark/lite_watermark_hover.svg', // Hover-state SVG
+    watermarkClickUrl: 'https://lite.panteo.ai/', // Target that opens when watermark is clicked
+    watermarkEndpoint: 'https://your-app.com/api/widget/watermark/AGENT_ID',
+    // If provided, the widget fetches JSON like:
+    // { "enabled": true, "default": "...", "hover": "...", "clickUrl": "..." }
+    // to decide whether to render the watermark (e.g., only for free plans).
+
     // Size and layout
     chatMargin: 20, // Margin from window edges (pixels)
     minChatWidth: 300, // Minimum width (pixels)
@@ -208,6 +218,23 @@ PORT=8000  # or any other port
 ```bash
 PORT=8000 npm start
 ```
+
+## Watermark policy endpoint (optional)
+
+If you run the widget as part of a hosted product and need to enforce attribution on specific plans, expose an HTTP endpoint that responds with the watermark policy for a given agent/user. Pass that URL through the `watermarkEndpoint` config option (see the configuration snippet above). The widget will call it with a `GET` request (CORS-friendly) and expects:
+
+```json
+{
+  "enabled": true,
+  "default": "https://example.com/watermark/lite.svg",
+  "hover": "https://example.com/watermark/lite_hover.svg",
+  "clickUrl": "https://lite.panteo.ai/?utm_source=widget"
+}
+```
+
+- Return `"enabled": false` (or HTTP 404) to hide the watermark.
+- Provide at least the `default` SVG when enabled; `hover` and `clickUrl` fall back to your config values if omitted.
+- Because everything happens client-side, you can plug in whatever business logic you like on the server (plan checks, trial periods, etc.) without forking the widget bundle.
 
 ## Building from Source
 
