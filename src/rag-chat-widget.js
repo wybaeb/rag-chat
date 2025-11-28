@@ -4,6 +4,10 @@ import { createElement, appendChildren } from './utils';
 import { marked } from 'marked';
 
 function initRagChat(config = {}) {
+    const WATERMARK_DEFAULT_DIMENSIONS = { width: 40, height: 21 };
+    const WATERMARK_HOVER_DIMENSIONS = { width: 155, height: 30 };
+    const WATERMARK_CLICK_BASE = 'https://lite.panteo.ai/';
+
     const defaultConfig = {
         token: '',
         url: 'http://localhost:3000/generate',
@@ -49,6 +53,12 @@ function initRagChat(config = {}) {
         captchaEndpoint: '/api/captcha/generate',
         captchaVerifyEndpoint: '/api/captcha/verify',
         agentId: null,
+        showWatermark: false,
+        watermarkDefault: null,
+        watermarkHover: null,
+        watermarkEndpoint: '',
+        watermarkClickUrl: WATERMARK_CLICK_BASE,
+        site: null,
         // Localization
         locale: 'en',
         captchaTitle: 'Verify you\'re human',
@@ -214,6 +224,7 @@ function initRagChat(config = {}) {
         if (!isSidebarMode || !sidebarContainer) return;
 
         isSidebarOpen = !isSidebarOpen;
+        ensureWatermarkPosition();
         
         if (isSidebarOpen) {
             sidebarContainer.style.width = mergedConfig.sidebarWidth;
@@ -290,6 +301,215 @@ function initRagChat(config = {}) {
     };
 
     const chatContainer = createElement('div', chatContainerStyles);
+    let shouldRenderWatermark = !!(mergedConfig.showWatermark && mergedConfig.watermarkDefault);
+    const watermarkPadding = {
+        vertical: isShowcaseMode ? 24 : 15,
+        horizontal: (isShowcaseMode || isSidebarMode) ? 24 : 15,
+    };
+    let watermarkHost = null;
+    let watermarkObserver = null;
+    let watermarkStyleObserver = null;
+    let watermarkStyleFrame = null;
+    let watermarkResizeListenerAttached = false;
+
+    const getWatermarkOffsets = () => {
+        const headerHeight = chatHeader?.offsetHeight || 0;
+        return {
+            top: headerHeight + watermarkPadding.vertical,
+            right: watermarkPadding.horizontal,
+        };
+    };
+
+    const applyWatermarkHostStyles = (target = watermarkHost) => {
+        if (!target) return;
+        const offsets = getWatermarkOffsets();
+        target.style.setProperty('position', 'absolute', 'important');
+        target.style.setProperty('display', 'block', 'important');
+        target.style.setProperty('pointer-events', 'none', 'important');
+        target.style.setProperty('z-index', isShowcaseMode ? '6' : '5', 'important');
+        target.style.setProperty('top', `${offsets.top}px`, 'important');
+        target.style.setProperty('right', `${offsets.right}px`, 'important');
+        target.style.setProperty('left', 'auto', 'important');
+        target.style.setProperty('bottom', 'auto', 'important');
+    };
+
+    const ensureWatermarkPosition = () => {
+        if (!watermarkHost) return;
+        if (watermarkStyleFrame) {
+            cancelAnimationFrame(watermarkStyleFrame);
+        }
+        watermarkStyleFrame = requestAnimationFrame(() => {
+            watermarkStyleFrame = null;
+            applyWatermarkHostStyles();
+        });
+    };
+
+    const guardWatermarkStyles = () => {
+        if (!watermarkHost || watermarkStyleObserver) return;
+        watermarkStyleObserver = new MutationObserver(() => ensureWatermarkPosition());
+        watermarkStyleObserver.observe(watermarkHost, { attributes: true, attributeFilter: ['style', 'class'] });
+    };
+
+    const openWatermarkLink = () => {
+        try {
+            const siteHost = (mergedConfig.site || window.location.hostname || 'unknown').toString();
+            const targetUrl = new URL(mergedConfig.watermarkClickUrl || WATERMARK_CLICK_BASE);
+            targetUrl.searchParams.set('utm_source', 'widget');
+            targetUrl.searchParams.set('utm_medium', 'watermark');
+            targetUrl.searchParams.set('utm_campaign', 'free_plan');
+            if (mergedConfig.agentId) {
+                targetUrl.searchParams.set('utm_content', mergedConfig.agentId.toString());
+            }
+            targetUrl.searchParams.set('utm_term', siteHost);
+            window.open(targetUrl.toString(), '_blank', 'noopener');
+        } catch (error) {
+            console.error('[RagChat] Failed to open watermark link', error);
+        }
+    };
+
+    const createWatermarkHost = () => {
+        const host = document.createElement('div');
+
+        const shadow = host.attachShadow({ mode: 'closed' });
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.setAttribute('aria-label', 'Lite watermark');
+        button.style.all = 'unset';
+        button.style.cursor = 'pointer';
+        button.style.display = 'inline-flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.pointerEvents = 'auto';
+        button.style.position = 'relative';
+        button.style.width = `${WATERMARK_HOVER_DIMENSIONS.width}px`;
+        button.style.height = `${WATERMARK_HOVER_DIMENSIONS.height}px`;
+
+        const makeLogo = (src) => {
+        const logo = document.createElement('img');
+        logo.alt = 'Lite watermark';
+        logo.decoding = 'async';
+        logo.referrerPolicy = 'no-referrer';
+        logo.draggable = false;
+            logo.src = src;
+            logo.style.position = 'absolute';
+            logo.style.top = '0';
+            logo.style.left = '0';
+            logo.style.width = '100%';
+            logo.style.height = '100%';
+            logo.style.objectFit = 'contain';
+            logo.style.transition = 'opacity 0.2s ease';
+            logo.style.pointerEvents = 'none';
+            return logo;
+        };
+
+        const defaultLogo = makeLogo(mergedConfig.watermarkDefault);
+        const hoverLogo = makeLogo(mergedConfig.watermarkHover || mergedConfig.watermarkDefault);
+        const setState = (state) => {
+            if (state === 'hover') {
+                hoverLogo.style.opacity = '1';
+                defaultLogo.style.opacity = '0';
+                button.style.opacity = '1';
+            } else {
+                hoverLogo.style.opacity = '0';
+                defaultLogo.style.opacity = '1';
+                button.style.opacity = '0.85';
+            }
+        };
+        const resetState = () => setState('default');
+        const activateState = () => setState('hover');
+        setState('default');
+
+        button.addEventListener('mouseenter', activateState);
+        button.addEventListener('mouseleave', resetState);
+        button.addEventListener('focus', activateState);
+        button.addEventListener('blur', resetState);
+        button.addEventListener('touchstart', activateState, { passive: true });
+        button.addEventListener('touchend', resetState);
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            openWatermarkLink();
+        });
+
+        button.appendChild(defaultLogo);
+        button.appendChild(hoverLogo);
+        shadow.appendChild(button);
+
+        applyWatermarkHostStyles(host);
+
+        return host;
+    };
+
+    const addResizeListener = () => {
+        if (watermarkResizeListenerAttached || typeof window === 'undefined' || !watermarkHost) {
+            return;
+        }
+        window.addEventListener('resize', ensureWatermarkPosition);
+        watermarkResizeListenerAttached = true;
+    };
+
+    const initWatermark = () => {
+        if (!shouldRenderWatermark) return;
+
+        if (!watermarkHost) {
+            watermarkHost = createWatermarkHost();
+        }
+
+        ensureWatermarkPosition();
+
+        if (!chatContainer.contains(watermarkHost)) {
+            chatContainer.appendChild(watermarkHost);
+        }
+
+        if (!watermarkObserver) {
+            watermarkObserver = new MutationObserver(() => {
+                if (watermarkHost && !chatContainer.contains(watermarkHost)) {
+                    chatContainer.appendChild(watermarkHost);
+                    ensureWatermarkPosition();
+                }
+            });
+            watermarkObserver.observe(chatContainer, { childList: true });
+        }
+
+        guardWatermarkStyles();
+        addResizeListener();
+    };
+
+    const fetchWatermarkPolicy = async () => {
+        if (shouldRenderWatermark || typeof window === 'undefined') {
+            return false;
+        }
+
+        if (!mergedConfig.watermarkEndpoint) {
+            return false;
+        }
+
+        try {
+            const response = await fetch(mergedConfig.watermarkEndpoint, {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                cache: 'no-store',
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const data = await response.json();
+            if (data?.enabled) {
+                mergedConfig.showWatermark = true;
+                mergedConfig.watermarkDefault = data.watermarkDefault || mergedConfig.watermarkDefault;
+                mergedConfig.watermarkHover = data.watermarkHover || mergedConfig.watermarkHover;
+                mergedConfig.watermarkClickUrl = data.clickUrl || mergedConfig.watermarkClickUrl;
+                shouldRenderWatermark = Boolean(mergedConfig.watermarkDefault);
+                return shouldRenderWatermark;
+            }
+        } catch (error) {
+            console.warn('[RagChat] Unable to enforce watermark policy', error);
+        }
+
+        return false;
+    };
 
     let chatHistory = [];
     let isWaitingForResponse = false;
@@ -407,6 +627,67 @@ function initRagChat(config = {}) {
     appendChildren(inputContainer, [chatInput, sendButton]);
     appendChildren(chatContainer, [chatHeader, chatMessages, inputContainer]);
 
+    const updateChatVisibility = (nextState = isChatOpen) => {
+        isChatOpen = nextState;
+
+        if (!chatButton) {
+            chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+            return;
+        }
+
+        const isMobileViewport =
+            typeof window !== 'undefined' &&
+            (window.innerWidth <= mergedConfig.mobileBreakpointWidth ||
+                window.innerHeight <= mergedConfig.mobileBreakpointHeight);
+
+        chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+
+        if (isMobileViewport && isChatOpen && mobileCloseButton) {
+            chatButton.style.display = 'none';
+            clearButton.style.marginRight = '40px';
+            Object.assign(mobileCloseButton.style, {
+                display: 'flex',
+                visibility: 'visible',
+                opacity: '1',
+                position: 'absolute',
+                right: '15px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: '1002'
+            });
+        } else {
+            chatButton.style.display = 'block';
+            chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
+            clearButton.style.marginRight = isSidebarMode ? '40px' : '0';
+            if (mobileCloseButton) {
+                Object.assign(mobileCloseButton.style, {
+                    display: 'none',
+                    visibility: 'hidden',
+                    opacity: '0'
+                });
+            }
+        }
+    };
+
+    const ensureWatermark = () => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (shouldRenderWatermark) {
+        initWatermark();
+            return;
+        }
+
+        fetchWatermarkPolicy().then((enforced) => {
+            if (enforced) {
+                initWatermark();
+            }
+        });
+    };
+
+    ensureWatermark();
+
     // Append to appropriate container
     if (isShowcaseMode && showcaseContainer) {
         // Showcase mode: append to showcase container
@@ -429,52 +710,30 @@ function initRagChat(config = {}) {
         appendChildren(document.body, [chatButton, chatContainer]);
     }
 
+    if (chatButton) {
+        updateChatVisibility(isChatOpen);
+        if (typeof window !== 'undefined') {
+            window.addEventListener('resize', () => updateChatVisibility(isChatOpen));
+        }
+    }
+
     // Chat button functionality (floating mode only)
     if (chatButton) {
         chatButton.onclick = function() {
-            isChatOpen = !isChatOpen;
-            chatContainer.style.display = isChatOpen ? 'flex' : 'none';
+            const nextState = !isChatOpen;
+            updateChatVisibility(nextState);
             
             // Initialize security features when chat opens for the first time
-            if (isChatOpen && !welcomeAnswered && (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled)) {
+            if (nextState && !welcomeAnswered && (mergedConfig.requireWelcomeAnswer || mergedConfig.captchaEnabled)) {
                 initializeSecurityFeatures();
-            }
-            
-            const isMobileWidth = window.innerWidth <= mergedConfig.mobileBreakpointWidth;
-            const isMobileHeight = window.innerHeight <= mergedConfig.mobileBreakpointHeight;
-            
-            if (isMobileWidth || isMobileHeight) {
-                chatButton.style.display = 'none';
-                clearButton.style.marginRight = '40px';
-                Object.assign(mobileCloseButton.style, {
-                    display: 'flex',
-                    visibility: 'visible',
-                    opacity: '1',
-                    position: 'absolute',
-                    right: '15px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: '1002'
-                });
-            } else {
-                chatButton.innerHTML = isChatOpen ? mergedConfig.buttonCloseCaption : mergedConfig.buttonOpenCaption;
             }
         };
     }
 
     // Mobile close button functionality (floating mode only)
-    if (mobileCloseButton) {
+    if (mobileCloseButton && chatButton) {
         mobileCloseButton.onclick = function() {
-            isChatOpen = false;
-            chatContainer.style.display = 'none';
-            chatButton.style.display = 'block';
-            clearButton.style.marginRight = '0';
-            Object.assign(mobileCloseButton.style, {
-                display: 'none',
-                visibility: 'hidden',
-                opacity: '0'
-            });
-            chatButton.innerHTML = mergedConfig.buttonOpenCaption;
+            updateChatVisibility(false);
         };
     }
 
