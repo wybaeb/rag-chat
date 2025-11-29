@@ -62,7 +62,7 @@ function initRagChat(config = {}) {
         // Localization
         locale: 'en',
         captchaTitle: 'Verify you\'re human',
-        captchaPlaceholder: 'Enter the text from the image',
+        captchaPlaceholder: 'Enter the result of the expression',
         captchaVerifyButton: 'Verify',
         captchaReloadButton: 'Reload',
         captchaErrorMessage: 'Incorrect CAPTCHA. Please try again.',
