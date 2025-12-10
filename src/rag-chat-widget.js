@@ -1335,6 +1335,11 @@ function initRagChat(config = {}) {
         links.forEach(link => {
             const href = link.getAttribute('href');
             
+            // Style links to be visible (blue color, underline)
+            link.style.color = '#667eea';
+            link.style.textDecoration = 'underline';
+            link.style.cursor = 'pointer';
+            
             // Validate href attribute
             if (href) {
                 const lower = href.toLowerCase().trim();
@@ -1352,6 +1357,17 @@ function initRagChat(config = {}) {
                 else if (lower.startsWith('http://') || lower.startsWith('https://')) {
                     link.setAttribute('target', '_blank');
                     link.setAttribute('rel', 'noopener noreferrer');
+                }
+                // Convert relative URLs to absolute
+                else if (href.startsWith('/')) {
+                    const absoluteUrl = makeAbsoluteUrl(href, baseUrl);
+                    link.setAttribute('href', absoluteUrl);
+                    
+                    // If it's now absolute, add target and rel
+                    if (absoluteUrl.startsWith('http')) {
+                        link.setAttribute('target', '_blank');
+                        link.setAttribute('rel', 'noopener noreferrer');
+                    }
                 }
             }
             
@@ -1471,8 +1487,8 @@ function initRagChat(config = {}) {
         // Set iframe attributes for security and functionality
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('scrolling', 'yes');
-        // Allow same-origin for CSS, scripts for interactivity, and forms if needed
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
+        // Sandbox allows same-origin for CSS but not scripts (content is static HTML)
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-popups allow-forms');
 
         iframeContainer.appendChild(iframe);
         appendChildren(modal, [header, iframeContainer]);
@@ -1641,10 +1657,19 @@ function initRagChat(config = {}) {
             const sanitizedHtml = sanitizeAgreementHtml(agreement.labelHtml);
             labelEl.innerHTML = sanitizedHtml;
 
-            // Handle modal links
+            // Ensure links are styled and visible
+            const allLinks = labelEl.querySelectorAll('a');
+            allLinks.forEach(link => {
+                link.style.color = '#667eea';
+                link.style.textDecoration = 'underline';
+                link.style.cursor = 'pointer';
+                link.style.fontWeight = '500';
+            });
+
+            // Handle modal links - check for data-modal attribute
             if (agreement.modalUrl) {
-                const links = labelEl.querySelectorAll('a');
-                links.forEach(link => {
+                const modalLinks = labelEl.querySelectorAll('a[data-modal], a[href="#"]');
+                modalLinks.forEach(link => {
                     link.addEventListener('click', (e) => {
                         e.preventDefault();
                         showDocumentModal(agreement.modalUrl, agreement.modalTitle);
