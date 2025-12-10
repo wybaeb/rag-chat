@@ -93,6 +93,59 @@ function initRagChat(config = {}) {
     };
 
     const mergedConfig = { ...defaultConfig, ...config };
+    
+    // Helper function to make URLs absolute based on the chat API URL
+    const getBaseUrl = (url) => {
+        try {
+            const urlObj = new URL(url);
+            return `${urlObj.protocol}//${urlObj.host}`;
+        } catch (e) {
+            console.error('Invalid URL:', url);
+            return '';
+        }
+    };
+    
+    const makeAbsoluteUrl = (path, baseUrl) => {
+        if (!path || typeof path !== 'string') return path;
+        
+        // Already absolute
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            return path;
+        }
+        
+        // Relative path starting with /
+        if (path.startsWith('/')) {
+            return baseUrl + path;
+        }
+        
+        // Otherwise return as is
+        return path;
+    };
+    
+    // Get base URL from the chat API endpoint
+    const baseUrl = getBaseUrl(mergedConfig.url);
+    
+    // Make all endpoints and asset URLs absolute
+    if (baseUrl) {
+        mergedConfig.captchaEndpoint = makeAbsoluteUrl(mergedConfig.captchaEndpoint, baseUrl);
+        mergedConfig.captchaVerifyEndpoint = makeAbsoluteUrl(mergedConfig.captchaVerifyEndpoint, baseUrl);
+        mergedConfig.agreementsEndpoint = makeAbsoluteUrl(mergedConfig.agreementsEndpoint, baseUrl);
+        mergedConfig.watermarkEndpoint = makeAbsoluteUrl(mergedConfig.watermarkEndpoint, baseUrl);
+        mergedConfig.cover = makeAbsoluteUrl(mergedConfig.cover, baseUrl);
+        mergedConfig.agentAvatar = makeAbsoluteUrl(mergedConfig.agentAvatar, baseUrl);
+        mergedConfig.userAvatar = makeAbsoluteUrl(mergedConfig.userAvatar, baseUrl);
+        mergedConfig.watermarkDefault = makeAbsoluteUrl(mergedConfig.watermarkDefault, baseUrl);
+        mergedConfig.watermarkHover = makeAbsoluteUrl(mergedConfig.watermarkHover, baseUrl);
+        
+        // Process agreements array if exists
+        if (mergedConfig.agreements && Array.isArray(mergedConfig.agreements)) {
+            mergedConfig.agreements = mergedConfig.agreements.map(agreement => ({
+                ...agreement,
+                modalUrl: makeAbsoluteUrl(agreement.modalUrl, baseUrl)
+            }));
+        }
+    }
+    
     const styles = createStyles(mergedConfig);
     
     // Inject bouncing dots CSS animation
