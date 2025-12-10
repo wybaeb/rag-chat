@@ -131,6 +131,16 @@ export function createStyles(config) {
             boxShadow: '0 2px 4px rgba(99, 91, 255, 0.15)', // Тень в фирменном цвете
             '& p': { margin: '0 0 10px 0' },
             '& p:last-child': { marginBottom: 0 },
+            '& a': {
+                color: config.linkColor || '#667eea',
+                textDecoration: 'underline',
+                fontWeight: '500',
+                cursor: 'pointer',
+            },
+            '& a:hover': {
+                color: config.linkHoverColor || '#5568d3',
+                textDecoration: 'underline',
+            },
             '& pre': {
                 backgroundColor: 'rgba(167, 91, 255, 0.08)',
                 padding: '10px',

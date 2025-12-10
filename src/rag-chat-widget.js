@@ -20,6 +20,8 @@ function initRagChat(config = {}) {
         chatBorderColor: 'rgba(99, 91, 255, 0.2)',
         inputBackgroundColor: 'rgba(245, 243, 255, 0.5)',
         sendButtonColor: '#635bff',
+        linkColor: '#667eea', // Color for links in messages and agreements
+        linkHoverColor: '#5568d3', // Color for links on hover
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
         chatTitle: 'RAG Chat',
@@ -1335,10 +1337,11 @@ function initRagChat(config = {}) {
         links.forEach(link => {
             const href = link.getAttribute('href');
             
-            // Style links to be visible (blue color, underline)
-            link.style.color = '#667eea';
+            // Style links to be visible using configured colors
+            link.style.color = mergedConfig.linkColor || '#667eea';
             link.style.textDecoration = 'underline';
             link.style.cursor = 'pointer';
+            link.style.fontWeight = '500';
             
             // Validate href attribute
             if (href) {
@@ -1657,10 +1660,10 @@ function initRagChat(config = {}) {
             const sanitizedHtml = sanitizeAgreementHtml(agreement.labelHtml);
             labelEl.innerHTML = sanitizedHtml;
 
-            // Ensure links are styled and visible
+            // Ensure links are styled and visible using configured colors
             const allLinks = labelEl.querySelectorAll('a');
             allLinks.forEach(link => {
-                link.style.color = '#667eea';
+                link.style.color = mergedConfig.linkColor || '#667eea';
                 link.style.textDecoration = 'underline';
                 link.style.cursor = 'pointer';
                 link.style.fontWeight = '500';
