@@ -1,5 +1,4 @@
 import { createStyles } from './styles';
-import { loadChatHistory, clearChatHistory } from './message-handler';
 import { createElement, appendChildren } from './utils';
 import { marked } from 'marked';
 
@@ -607,6 +606,36 @@ function initRagChat(config = {}) {
     let isAnimatingWelcome = false;
     let welcomeAnimationTriggered = false;
     let welcomeIntersectionObserver = null;
+
+    // ========== HELPER FUNCTIONS (EARLY DECLARATION) ==========
+    // Note: Declared early because they are called before UI initialization
+
+    /**
+     * Load chat history from localStorage
+     */
+    function loadChatHistory(chatMessages, chatHistory, config) {
+        const savedHistory = localStorage.getItem('ragChatHistory');
+        if (savedHistory) {
+            try {
+                const parsedHistory = JSON.parse(savedHistory);
+                chatHistory.push(...parsedHistory);
+            } catch (error) {
+                console.error('Error loading chat history:', error);
+            }
+        }
+    }
+
+    /**
+     * Clear chat history and reset widget state
+     */
+    function clearChatHistory(chatMessages, chatHistory) {
+        chatMessages.innerHTML = '';
+        chatHistory.length = 0;
+        localStorage.removeItem('ragChatHistory');
+        const newSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('ragChatSessionId', newSessionId);
+        console.log('Chat history cleared, new session:', newSessionId);
+    }
 
     // Create chat button (only for floating mode)
     const chatButton = (!isSidebarMode && !isShowcaseMode) ? createElement('button', styles.chatButton, {
