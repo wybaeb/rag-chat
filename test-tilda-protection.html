@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chat Widget - Tilda Style Protection Test</title>
+    <style>
+        /* ========================================
+           SIMULATING TILDA'S AGGRESSIVE CSS
+           ========================================
+           These styles simulate the exact CSS rules 
+           that Tilda and other site builders use
+        */
+        
+        /* Tilda's box-sizing reset - THE MAIN CULPRIT */
+        *, *:before, *:after {
+            -webkit-box-sizing: content-box !important;
+            -moz-box-sizing: content-box !important;
+            box-sizing: content-box !important;
+        }
+        
+        /* Tilda's other aggressive resets */
+        * {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        button {
+            padding: 20px !important;
+            margin: 10px !important;
+            border: 5px solid red !important;
+        }
+        
+        input {
+            padding: 30px !important;
+            border: 3px solid blue !important;
+        }
+        
+        div {
+            border: 2px dashed green !important;
+            margin: 5px !important;
+        }
+        
+        /* Test page styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0 !important;
+            padding: 20px !important;
+        }
+        
+        .test-info {
+            background: white !important;
+            padding: 20px !important;
+            border-radius: 8px !important;
+            margin-bottom: 20px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            box-sizing: border-box !important;
+        }
+        
+        .test-info h1 {
+            color: #333 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .test-info p {
+            color: #666 !important;
+            line-height: 1.6 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .warning {
+            background: #fff3cd !important;
+            border: 1px solid #ffc107 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+            margin-bottom: 20px !important;
+            box-sizing: border-box !important;
+        }
+        
+        .warning strong {
+            color: #856404 !important;
+        }
+        
+        .success {
+            background: #d4edda !important;
+            border: 1px solid #28a745 !important;
+            border-radius: 4px !important;
+            padding: 15px !important;
+            margin-bottom: 20px !important;
+            box-sizing: border-box !important;
+        }
+        
+        .success strong {
+            color: #155724 !important;
+        }
+        
+        code {
+            background: #f5f5f5 !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-family: monospace !important;
+            box-sizing: border-box !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h1>🛡️ RAG Chat Widget - Tilda Protection Test</h1>
+        <p>This page simulates <strong>Tilda's aggressive CSS</strong> that was breaking the widget button.</p>
+    </div>
+
+    <div class="warning">
+        <strong>⚠️ Active CSS Interference:</strong><br>
+        This page has the following Tilda-style rules active:
+        <ul style="margin-left: 20px !important; margin-top: 10px !important;">
+            <li style="margin-bottom: 5px !important;"><code>*, *:before, *:after { box-sizing: content-box !important; }</code></li>
+            <li style="margin-bottom: 5px !important;"><code>* { margin: 0 !important; padding: 0 !important; }</code></li>
+            <li style="margin-bottom: 5px !important;"><code>button { padding: 20px !important; border: 5px solid red !important; }</code></li>
+        </ul>
+    </div>
+
+    <div class="success">
+        <strong>✅ Widget Protection Active (FIXED!):</strong><br>
+        The widget now has multi-layer protection AND correct function initialization:
+        <ul style="margin-left: 20px !important; margin-top: 10px !important;">
+            <li style="margin-bottom: 5px !important;">✅ CSS rule enforcing <code>box-sizing: border-box !important</code> on all widget elements</li>
+            <li style="margin-bottom: 5px !important;">✅ All widget elements have <code>data-rag-chat-widget</code> attribute for scoping</li>
+            <li style="margin-bottom: 5px !important;">✅ Critical CSS properties use <code>!important</code> flag</li>
+            <li style="margin-bottom: 5px !important;">✅ Explicit <code>boxSizing: 'border-box'</code> in all style definitions</li>
+            <li style="margin-bottom: 5px !important;">✅ <strong>NEW:</strong> Fixed function initialization order (<code>applyLinkStyles</code>, <code>handleMessage</code>)</li>
+        </ul>
+    </div>
+
+    <div class="test-info">
+        <h2 style="margin-bottom: 10px !important;">Test Instructions:</h2>
+        <ol style="margin-left: 20px !important;">
+            <li style="margin-bottom: 8px !important;">Click the chat button in the bottom-right corner</li>
+            <li style="margin-bottom: 8px !important;">The button should appear <strong>round/circular</strong>, not square</li>
+            <li style="margin-bottom: 8px !important;">All widget elements should maintain their proper spacing and appearance</li>
+            <li style="margin-bottom: 8px !important;">No red borders or other page styles should leak into the widget</li>
+        </ol>
+        
+        <h2 style="margin-top: 20px !important; margin-bottom: 10px !important;">Expected Results:</h2>
+        <p><strong>✅ Button:</strong> Should be round with proper padding (60x60px minimum)</p>
+        <p><strong>✅ Chat Window:</strong> Should have proper rounded corners and spacing</p>
+        <p><strong>✅ Input Field:</strong> Should have correct padding and not be distorted</p>
+        <p><strong>✅ All Elements:</strong> Should use border-box sizing despite page-wide content-box rule</p>
+    </div>
+
+    <!-- Regular button for comparison (will be affected by aggressive CSS) -->
+    <div class="test-info">
+        <h2 style="margin-bottom: 10px !important;">Comparison Button (Not Protected):</h2>
+        <p>This regular button shows how Tilda's CSS affects unprotected elements:</p>
+        <button style="box-sizing: content-box !important;">Regular Button (Affected by Tilda CSS)</button>
+    </div>
+
+    <!-- Load the RAG Chat Widget -->
+    <script src="dist/rag-chat-widget.bundle.js"></script>
+    <script>
+        // Initialize the widget with test configuration
+        RagChat({
+            token: 'test-token',
+            url: 'http://localhost:3000/generate',
+            buttonPosition: 'bottom-right',
+            buttonColor: '#635bff',
+            buttonOpenCaption: '💬',
+            buttonCloseCaption: '✕',
+            chatTitle: 'Protected Chat Widget',
+            inputPlaceholder: 'Type your message...',
+        });
+    </script>
+</body>
+</html>

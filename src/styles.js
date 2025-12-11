@@ -1,6 +1,7 @@
 export function createStyles(config) {
     return {
         chatButton: {
+            boxSizing: 'border-box',
             position: 'fixed',
             bottom: '20px',
             right: '20px',
@@ -16,11 +17,15 @@ export function createStyles(config) {
             minWidth: '60px',
             minHeight: '60px',
             transition: 'transform 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             '&:hover': {
                 transform: 'scale(1.1)',
             },
         },
         chatContainer: {
+            boxSizing: 'border-box',
             position: 'fixed',
             bottom: '95px',
             right: '20px',
@@ -42,6 +47,7 @@ export function createStyles(config) {
             minHeight: '400px',
         },
         sidebarChatContainer: {
+            boxSizing: 'border-box',
             position: 'relative',
             width: '100%',
             height: '100%',
@@ -59,6 +65,7 @@ export function createStyles(config) {
             resize: 'none',
         },
         showcaseChatContainer: {
+            boxSizing: 'border-box',
             position: 'relative',
             width: '100%',
             maxWidth: config.showcaseMaxWidth || '1024px',
@@ -79,6 +86,7 @@ export function createStyles(config) {
             margin: '0 auto',
         },
         chatHeader: {
+            boxSizing: 'border-box',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -100,6 +108,7 @@ export function createStyles(config) {
             marginRight: '15px',
         },
         clearButton: {
+            boxSizing: 'border-box',
             padding: '10px 15px',
             border: 'none',
             borderRadius: '15px',
@@ -111,6 +120,7 @@ export function createStyles(config) {
             whiteSpace: 'nowrap',
         },
         chatMessages: {
+            boxSizing: 'border-box',
             flex: 1,
             overflowY: 'auto',
             padding: config.mode === 'showcase' ? '24px' : '20px',
@@ -119,6 +129,7 @@ export function createStyles(config) {
             position: 'relative', // For watermark absolute positioning
         },
         messageAgent: {
+            boxSizing: 'border-box',
             alignSelf: 'flex-start',
             backgroundColor: 'rgba(232, 228, 255, 0.7)', // Светлый оттенок фирменного цвета
             borderRadius: config.mode === 'showcase' ? '18px 18px 18px 4px' : '15px 15px 15px 0',
@@ -177,6 +188,7 @@ export function createStyles(config) {
             },
         },
         messageUser: {
+            boxSizing: 'border-box',
             alignSelf: 'flex-end',
             backgroundColor: 'rgba(99, 91, 255, 0.9)', // Немного прозрачности
             color: 'white',
@@ -191,6 +203,7 @@ export function createStyles(config) {
             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавим легкую тень
         },
         inputContainer: {
+            boxSizing: 'border-box',
             display: 'flex',
             borderTop: '1px solid rgba(99, 91, 255, 0.15)',
             padding: config.mode === 'showcase' ? '20px 24px' : '15px',
@@ -198,6 +211,7 @@ export function createStyles(config) {
             paddingRight: config.mode === 'showcase' ? '24px' : '15px',
         },
         chatInput: {
+            boxSizing: 'border-box',
             flex: '1',
             padding: config.mode === 'showcase' ? '14px 18px' : '10px 15px',
             border: '1px solid rgba(99, 91, 255, 0.2)',
@@ -206,6 +220,7 @@ export function createStyles(config) {
             fontSize: config.mode === 'showcase' ? '16px' : '14px',
         },
         sendButton: {
+            boxSizing: 'border-box',
             marginLeft: config.mode === 'showcase' ? '12px' : '10px',
             padding: config.mode === 'showcase' ? '14px 20px' : '10px 15px',
             border: 'none',
@@ -216,6 +231,9 @@ export function createStyles(config) {
             fontSize: config.mode === 'showcase' ? '20px' : '18px',
             transition: 'background-color 0.3s',
             minWidth: config.mode === 'showcase' ? '56px' : '48px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
         },
         preloaderContainer: {
             position: 'absolute',

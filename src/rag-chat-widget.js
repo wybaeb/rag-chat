@@ -149,9 +149,23 @@ function initRagChat(config = {}) {
     
     const styles = createStyles(mergedConfig);
     
-    // Inject CSS animations and link styles
+    // Inject comprehensive CSS protection and animations
     const styleEl = document.createElement('style');
     styleEl.textContent = `
+        /* ========== WIDGET STYLE PROTECTION ========== */
+        /* Protect widget from external CSS interference (especially Tilda, WordPress, etc.) */
+        
+        /* Force border-box sizing - CRITICAL for Tilda and other site builders */
+        [data-rag-chat-widget],
+        [data-rag-chat-widget] *,
+        [data-rag-chat-widget] *::before,
+        [data-rag-chat-widget] *::after {
+            box-sizing: border-box !important;
+            -webkit-box-sizing: border-box !important;
+            -moz-box-sizing: border-box !important;
+        }
+        
+        /* Animations */
         @keyframes bounce {
             0%, 80%, 100% {
                 transform: scale(0);
@@ -637,6 +651,22 @@ function initRagChat(config = {}) {
         console.log('Chat history cleared, new session:', newSessionId);
     }
 
+    /**
+     * Apply link styles to all links in an element
+     * Forces link colors to prevent inheritance from parent site
+     * @param {HTMLElement} element - Element containing links
+     */
+    const applyLinkStyles = (element) => {
+        if (!element) return;
+        const links = element.querySelectorAll('a');
+        links.forEach(link => {
+            link.style.setProperty('color', mergedConfig.linkColor || '#667eea', 'important');
+            link.style.setProperty('text-decoration', 'underline', 'important');
+            link.style.setProperty('font-weight', '500', 'important');
+            link.style.setProperty('cursor', 'pointer', 'important');
+        });
+    };
+
     // Create chat button (only for floating mode)
     const chatButton = (!isSidebarMode && !isShowcaseMode) ? createElement('button', styles.chatButton, {
         innerHTML: mergedConfig.buttonOpenCaption
@@ -842,24 +872,7 @@ function initRagChat(config = {}) {
         };
     }
 
-    const sendMessage = async () => {
-        const message = chatInput.value.trim();
-        if (message && !isWaitingForResponse) {
-            chatInput.value = '';
-            isWaitingForResponse = true;
-            try {
-                await handleMessage(message, chatMessages, chatHistory, mergedConfig);
-            } finally {
-                isWaitingForResponse = false;
-            }
-        }
-    };
-
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-    });
-
-    sendButton.addEventListener('click', sendMessage);
+    // NOTE: sendMessage definition moved below after handleMessage is declared
 
     // Render cover image if configured and history is empty
     let coverElement = null;
@@ -1369,24 +1382,6 @@ function initRagChat(config = {}) {
             captchaContainer = null;
             isShowingCaptcha = false;
         }
-    };
-
-    // ========== HELPER FUNCTIONS ==========
-
-    /**
-     * Apply link styles to all links in an element
-     * Forces link colors to prevent inheritance from parent site
-     * @param {HTMLElement} element - Element containing links
-     */
-    const applyLinkStyles = (element) => {
-        if (!element) return;
-        const links = element.querySelectorAll('a');
-        links.forEach(link => {
-            link.style.setProperty('color', mergedConfig.linkColor || '#667eea', 'important');
-            link.style.setProperty('text-decoration', 'underline', 'important');
-            link.style.setProperty('font-weight', '500', 'important');
-            link.style.setProperty('cursor', 'pointer', 'important');
-        });
     };
 
     // ========== AGREEMENT CONSENT FUNCTIONS ==========
@@ -2364,6 +2359,27 @@ function initRagChat(config = {}) {
             isWaitingForResponse = false;
         }
     };
+
+    // Define sendMessage now that handleMessage is available
+    const sendMessage = async () => {
+        const message = chatInput.value.trim();
+        if (message && !isWaitingForResponse) {
+            chatInput.value = '';
+            isWaitingForResponse = true;
+            try {
+                await handleMessage(message);
+            } finally {
+                isWaitingForResponse = false;
+            }
+        }
+    };
+
+    // Attach event listeners for input
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    sendButton.addEventListener('click', sendMessage);
 
     // Create resize handles
     const resizeHandleTopLeft = createElement('div', {
