@@ -116,6 +116,7 @@ export function createStyles(config) {
             padding: config.mode === 'showcase' ? '24px' : '20px',
             display: 'flex',
             flexDirection: 'column',
+            position: 'relative', // For watermark absolute positioning
         },
         messageAgent: {
             alignSelf: 'flex-start',
@@ -132,14 +133,14 @@ export function createStyles(config) {
             '& p': { margin: '0 0 10px 0' },
             '& p:last-child': { marginBottom: 0 },
             '& a': {
-                color: config.linkColor || '#667eea',
-                textDecoration: 'underline',
-                fontWeight: '500',
-                cursor: 'pointer',
+                color: `${config.linkColor || '#667eea'} !important`,
+                textDecoration: 'underline !important',
+                fontWeight: '500 !important',
+                cursor: 'pointer !important',
             },
             '& a:hover': {
-                color: config.linkHoverColor || '#5568d3',
-                textDecoration: 'underline',
+                color: `${config.linkHoverColor || '#5568d3'} !important`,
+                textDecoration: 'underline !important',
             },
             '& pre': {
                 backgroundColor: 'rgba(167, 91, 255, 0.08)',

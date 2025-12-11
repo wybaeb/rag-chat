@@ -20,12 +20,12 @@ function initRagChat(config = {}) {
         chatBorderColor: 'rgba(99, 91, 255, 0.2)',
         inputBackgroundColor: 'rgba(245, 243, 255, 0.5)',
         sendButtonColor: '#635bff',
-        linkColor: '#667eea', // Color for links in messages and agreements
-        linkHoverColor: '#5568d3', // Color for links on hover
+        linkColor: '#667eea', // Color for links in agent messages (default: blue, override via config)
+        linkHoverColor: '#5568d3', // Hover color for links (default: darker blue)
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
         chatTitle: 'RAG Chat',
-        clearButtonCaption: '🗑️ Clear History',
+        clearButtonCaption: '\uD83D\uDDD1\uFE0F Clear History', // 🗑️ Trash bin emoji represented as Unicode for Tilda compatibility
         inputPlaceholder: 'Type your message...',
         mobileBreakpointWidth: 768,
         mobileBreakpointHeight: 600,
@@ -150,7 +150,7 @@ function initRagChat(config = {}) {
     
     const styles = createStyles(mergedConfig);
     
-    // Inject bouncing dots CSS animation
+    // Inject CSS animations and link styles
     const styleEl = document.createElement('style');
     styleEl.textContent = `
         @keyframes bounce {
@@ -162,6 +162,20 @@ function initRagChat(config = {}) {
                 transform: scale(1);
                 opacity: 1;
             }
+        }
+        
+        /* Force link colors in agent messages to prevent inheritance from parent site */
+        [data-rag-chat-message="agent"] a,
+        [data-rag-chat-agreement] a {
+            color: ${mergedConfig.linkColor || '#667eea'} !important;
+            text-decoration: underline !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+        }
+        
+        [data-rag-chat-message="agent"] a:hover,
+        [data-rag-chat-agreement] a:hover {
+            color: ${mergedConfig.linkHoverColor || '#5568d3'} !important;
         }
     `;
     document.head.appendChild(styleEl);
@@ -368,9 +382,9 @@ function initRagChat(config = {}) {
     let watermarkResizeListenerAttached = false;
 
     const getWatermarkOffsets = () => {
-        const headerHeight = chatHeader?.offsetHeight || 0;
+        // Position watermark in top-right corner of the messages container
         return {
-            top: headerHeight + watermarkPadding.vertical,
+            top: watermarkPadding.vertical,
             right: watermarkPadding.horizontal,
         };
     };
@@ -517,18 +531,19 @@ function initRagChat(config = {}) {
 
         ensureWatermarkPosition();
 
-        if (!chatContainer.contains(watermarkHost)) {
-            chatContainer.appendChild(watermarkHost);
+        // Add watermark to chatMessages container (dialog history area) instead of chatContainer
+        if (!chatMessages.contains(watermarkHost)) {
+            chatMessages.appendChild(watermarkHost);
         }
 
         if (!watermarkObserver) {
             watermarkObserver = new MutationObserver(() => {
-                if (watermarkHost && !chatContainer.contains(watermarkHost)) {
-                    chatContainer.appendChild(watermarkHost);
+                if (watermarkHost && !chatMessages.contains(watermarkHost)) {
+                    chatMessages.appendChild(watermarkHost);
                     ensureWatermarkPosition();
                 }
             });
-            watermarkObserver.observe(chatContainer, { childList: true });
+            watermarkObserver.observe(chatMessages, { childList: true });
         }
 
         guardWatermarkStyles();
@@ -963,6 +978,11 @@ function initRagChat(config = {}) {
         // Create message bubble
         const messageElement = createElement('div', sender === 'User' ? styles.messageUser : styles.messageAgent);
         
+        // Add data attribute for CSS targeting
+        if (sender === 'Agent') {
+            messageElement.setAttribute('data-rag-chat-message', 'agent');
+        }
+        
         if (showBouncingDots) {
             // Create bouncing dots loader
             const dotsContainer = createElement('div', {
@@ -987,8 +1007,12 @@ function initRagChat(config = {}) {
             messageElement.appendChild(dotsContainer);
         } else {
             messageElement.innerHTML = sender === 'User' ? text : marked(text);
+            // Apply link styles to prevent inheritance from parent site
+            if (sender === 'Agent') {
+                applyLinkStyles(messageElement);
+            }
         }
-        
+
         messageWrapper.appendChild(messageElement);
         messageContainer.appendChild(messageWrapper);
         
@@ -1318,6 +1342,24 @@ function initRagChat(config = {}) {
         }
     };
 
+    // ========== HELPER FUNCTIONS ==========
+
+    /**
+     * Apply link styles to all links in an element
+     * Forces link colors to prevent inheritance from parent site
+     * @param {HTMLElement} element - Element containing links
+     */
+    const applyLinkStyles = (element) => {
+        if (!element) return;
+        const links = element.querySelectorAll('a');
+        links.forEach(link => {
+            link.style.setProperty('color', mergedConfig.linkColor || '#667eea', 'important');
+            link.style.setProperty('text-decoration', 'underline', 'important');
+            link.style.setProperty('font-weight', '500', 'important');
+            link.style.setProperty('cursor', 'pointer', 'important');
+        });
+    };
+
     // ========== AGREEMENT CONSENT FUNCTIONS ==========
 
     /**
@@ -1337,11 +1379,11 @@ function initRagChat(config = {}) {
         links.forEach(link => {
             const href = link.getAttribute('href');
             
-            // Style links to be visible using configured colors
-            link.style.color = mergedConfig.linkColor || '#667eea';
-            link.style.textDecoration = 'underline';
-            link.style.cursor = 'pointer';
-            link.style.fontWeight = '500';
+            // Apply inline styles with !important to prevent inheritance
+            link.style.setProperty('color', mergedConfig.linkColor || '#667eea', 'important');
+            link.style.setProperty('text-decoration', 'underline', 'important');
+            link.style.setProperty('font-weight', '500', 'important');
+            link.style.setProperty('cursor', 'pointer', 'important');
             
             // Validate href attribute
             if (href) {
@@ -1490,8 +1532,8 @@ function initRagChat(config = {}) {
         // Set iframe attributes for security and functionality
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('scrolling', 'yes');
-        // Sandbox allows same-origin for CSS but not scripts (content is static HTML)
-        iframe.setAttribute('sandbox', 'allow-same-origin allow-popups allow-forms');
+        // Allow same-origin for CSS, scripts for interactivity, and forms if needed
+        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms');
 
         iframeContainer.appendChild(iframe);
         appendChildren(modal, [header, iframeContainer]);
@@ -1607,6 +1649,9 @@ function initRagChat(config = {}) {
             border: '1px solid rgba(102, 126, 234, 0.2)',
             boxShadow: '0 2px 8px rgba(102, 126, 234, 0.08)'
         });
+        
+        // Add data attribute for CSS targeting
+        agreementsContainer.setAttribute('data-rag-chat-agreement', 'true');
 
         // Create title (more narrative)
         const title = createElement('div', {
@@ -1660,16 +1705,16 @@ function initRagChat(config = {}) {
             const sanitizedHtml = sanitizeAgreementHtml(agreement.labelHtml);
             labelEl.innerHTML = sanitizedHtml;
 
-            // Ensure links are styled and visible using configured colors
+            // Force link styling with inline styles to override parent site CSS
             const allLinks = labelEl.querySelectorAll('a');
             allLinks.forEach(link => {
-                link.style.color = mergedConfig.linkColor || '#667eea';
-                link.style.textDecoration = 'underline';
-                link.style.cursor = 'pointer';
-                link.style.fontWeight = '500';
+                link.style.setProperty('color', mergedConfig.linkColor || '#667eea', 'important');
+                link.style.setProperty('text-decoration', 'underline', 'important');
+                link.style.setProperty('font-weight', '500', 'important');
+                link.style.setProperty('cursor', 'pointer', 'important');
             });
 
-            // Handle modal links - check for data-modal attribute
+            // Handle modal links
             if (agreement.modalUrl) {
                 const modalLinks = labelEl.querySelectorAll('a[data-modal], a[href="#"]');
                 modalLinks.forEach(link => {
@@ -1883,27 +1928,30 @@ function initRagChat(config = {}) {
         if (!mergedConfig.streamWelcomeMessage) {
             // No animation, just set the text
             messageElement.innerHTML = marked(fullText);
+            applyLinkStyles(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
             return;
         }
 
         let currentText = '';
         const tokens = splitIntoPseudoTokens(fullText);
-        
+
         for (const token of tokens) {
             if (!isAnimatingWelcome) {
                 // Animation was cancelled, show full text
                 messageElement.innerHTML = marked(fullText);
+                applyLinkStyles(messageElement);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 return;
             }
 
             currentText += token;
             messageElement.innerHTML = marked(currentText);
+            applyLinkStyles(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            
+
             // Random delay between min and max
-            const delay = mergedConfig.welcomeAnimationMinDelay + 
+            const delay = mergedConfig.welcomeAnimationMinDelay +
                          Math.random() * (mergedConfig.welcomeAnimationMaxDelay - mergedConfig.welcomeAnimationMinDelay);
             await sleep(delay);
         }
