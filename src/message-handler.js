@@ -1,5 +1,5 @@
 import { createElement, formatText } from './utils';
-import marked from 'marked';
+import { marked } from 'marked';
 
 export async function handleMessage(message, chatMessages, chatHistory, config) {
     addMessage('User', message, chatMessages, config);
